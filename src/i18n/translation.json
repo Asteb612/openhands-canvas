@@ -47158,5 +47158,23 @@
     "uk": "Відкрити {{ref}} на GitHub",
     "ca": "Obre {{ref}} a GitHub",
     "id": "Buka {{ref}} di GitHub"
+  },
+  "FACTORY$TICKET": {
+    "en": "Ticket",
+    "ja": "チケット",
+    "zh-CN": "工单",
+    "zh-TW": "工單",
+    "ko-KR": "티켓",
+    "no": "Sak",
+    "it": "Ticket",
+    "pt": "Chamado",
+    "es": "Ticket",
+    "ar": "تذكرة",
+    "fr": "Ticket",
+    "tr": "Talep",
+    "de": "Ticket",
+    "uk": "Тікет",
+    "ca": "Tiquet",
+    "id": "Tiket"
   }
 }

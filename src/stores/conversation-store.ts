@@ -13,7 +13,8 @@ export type ConversationTab =
   | "planner"
   | "tasklist"
   | "usage"
-  | "project";
+  | "project"
+  | "ticket"; // factory: Ticket tab
 
 export type ConversationMode = "code" | "plan";
 

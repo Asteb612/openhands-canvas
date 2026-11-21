@@ -451,7 +451,8 @@ describe("ConversationTabs localStorage behavior", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows the build button when the planner tab is active", async () => {
+    // factory: the Build button is removed (the orchestrator drives the steps).
+    it("never shows the build button, even with a plan", async () => {
       setActiveTabState("planner");
       useConversationStore.setState({
         planContent: "# Plan content",
@@ -461,37 +462,10 @@ describe("ConversationTabs localStorage behavior", () => {
         wrapper: createWrapper(REAL_CONVERSATION_ID),
       });
 
+      await screen.findByRole("tab", { name: /planner/i });
       expect(
-        await screen.findByTestId("planner-tab-build-button"),
-      ).toBeInTheDocument();
-    });
-
-    it("disables the build button when there is no plan content", async () => {
-      setActiveTabState("planner");
-
-      render(<ConversationTabs />, {
-        wrapper: createWrapper(REAL_CONVERSATION_ID),
-      });
-
-      expect(
-        await screen.findByTestId("planner-tab-build-button"),
-      ).toBeDisabled();
-    });
-
-    it("disables the build button when the agent is running", async () => {
-      mockCurAgentState = AgentState.RUNNING;
-      setActiveTabState("planner");
-      useConversationStore.setState({
-        planContent: "# Plan content",
-      });
-
-      render(<ConversationTabs />, {
-        wrapper: createWrapper(REAL_CONVERSATION_ID),
-      });
-
-      expect(
-        await screen.findByTestId("planner-tab-build-button"),
-      ).toBeDisabled();
+        screen.queryByTestId("planner-tab-build-button"),
+      ).not.toBeInTheDocument();
     });
 
     it("leaves the build bar out of the compact tab row, which sits in the fixed-height phone top bar", () => {
@@ -510,22 +484,6 @@ describe("ConversationTabs localStorage behavior", () => {
       expect(
         screen.queryByTestId("planner-tab-build-button"),
       ).not.toBeInTheDocument();
-    });
-
-    it("calls the build handler when the build button is clicked", async () => {
-      const user = userEvent.setup();
-      setActiveTabState("planner");
-      useConversationStore.setState({
-        planContent: "# Plan content",
-      });
-
-      render(<ConversationTabs />, {
-        wrapper: createWrapper(REAL_CONVERSATION_ID),
-      });
-
-      await user.click(await screen.findByTestId("planner-tab-build-button"));
-
-      expect(mockHandleBuildPlanClick).toHaveBeenCalledTimes(1);
     });
   });
 

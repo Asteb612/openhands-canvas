@@ -8,6 +8,8 @@ import { useAgentState, usePlanningAgentState } from "#/hooks/use-agent-state";
 import { AgentState } from "#/types/agent-state";
 import { Typography } from "#/ui/typography";
 
+const FACTORY_DISABLE_BUILD = true; // factory
+
 /**
  * The Planner tab's Build row, shown below the drawer tab row while the
  * Planner tab is open. Rendered by the desktop drawer header and, at phone
@@ -25,7 +27,8 @@ export function ConversationPlannerBuildBar({
   const { curAgentState } = useAgentState();
   const { isPlanningAgentRunning } = usePlanningAgentState();
 
-  if (!isTabActive("planner")) return null;
+  // factory: no Build button (the orchestrator drives the steps).
+  if (!isTabActive("planner") || FACTORY_DISABLE_BUILD) return null;
 
   const isAgentRunning =
     curAgentState === AgentState.RUNNING ||

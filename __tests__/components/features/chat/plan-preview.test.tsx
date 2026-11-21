@@ -147,7 +147,8 @@ describe("PlanPreview", () => {
     expect(buildButton).toBeInTheDocument();
   });
 
-  it("should switch to code mode when Build button is clicked", async () => {
+  // factory: Build is disabled in the fork (see __tests__/hooks/use-handle-build-plan-click.test.ts).
+  it.skip("should switch to code mode when Build button is clicked", async () => {
     // Arrange
     useConversationStore.setState({ conversationMode: "plan" });
     const user = userEvent.setup();
@@ -161,7 +162,8 @@ describe("PlanPreview", () => {
     expect(useConversationStore.getState().conversationMode).toBe("code");
   });
 
-  it("should send build prompt message when Build button is clicked", async () => {
+  // factory: Build is disabled in the fork (see __tests__/hooks/use-handle-build-plan-click.test.ts).
+  it.skip("should send build prompt message when Build button is clicked", async () => {
     // Arrange
     const user = userEvent.setup();
     const expectedPrompt =
@@ -191,7 +193,8 @@ describe("PlanPreview", () => {
     );
   });
 
-  it("should enqueue a pending user message when Build button is clicked", async () => {
+  // factory: Build is disabled in the fork (see __tests__/hooks/use-handle-build-plan-click.test.ts).
+  it.skip("should enqueue a pending user message when Build button is clicked", async () => {
     // Arrange
     useOptimisticUserMessageStore.getState().clearPendingMessages();
     const user = userEvent.setup();
