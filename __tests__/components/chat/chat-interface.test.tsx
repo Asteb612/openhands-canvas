@@ -1488,7 +1488,8 @@ describe("ChatInterface - Build plan keyboard shortcut", () => {
     expect(sentBuildPrompt()).toBe(false);
   });
 
-  it("sends the build prompt in plan mode when a plan exists", async () => {
+  // factory: Build is disabled in the fork (see __tests__/hooks/use-handle-build-plan-click.test.ts).
+  it.skip("sends the build prompt in plan mode when a plan exists", async () => {
     act(() => {
       useConversationStore.setState({
         conversationMode: "plan",
@@ -1504,7 +1505,8 @@ describe("ChatInterface - Build plan keyboard shortcut", () => {
     });
   });
 
-  it("sends the build prompt from the empty composer when the chat re-renders during the keypress", async () => {
+  // factory: Build is disabled in the fork (see __tests__/hooks/use-handle-build-plan-click.test.ts).
+  it.skip("sends the build prompt from the empty composer when the chat re-renders during the keypress", async () => {
     act(() => {
       useConversationStore.setState({
         conversationMode: "plan",

@@ -44134,5 +44134,23 @@
     "uk": "Розмови, розпочаті без профілю агента, використовують власний список інструментів: {{names}}.",
     "ca": "Les converses iniciades sense un perfil d'agent fan servir una llista d'eines personalitzada: {{names}}.",
     "id": "Percakapan yang dimulai tanpa profil agen menggunakan daftar alat khusus: {{names}}."
+  },
+  "FACTORY$TICKET": {
+    "en": "Ticket",
+    "ja": "チケット",
+    "zh-CN": "工单",
+    "zh-TW": "工單",
+    "ko-KR": "티켓",
+    "no": "Sak",
+    "it": "Ticket",
+    "pt": "Chamado",
+    "es": "Ticket",
+    "ar": "تذكرة",
+    "fr": "Ticket",
+    "tr": "Talep",
+    "de": "Ticket",
+    "uk": "Тікет",
+    "ca": "Tiquet",
+    "id": "Tiket"
   }
 }

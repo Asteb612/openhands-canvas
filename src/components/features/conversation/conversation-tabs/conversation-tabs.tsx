@@ -7,7 +7,13 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutGroup } from "framer-motion";
-import { Gauge, Globe, ListTodo, SquareChevronRight } from "lucide-react";
+import {
+  Gauge,
+  Globe,
+  ListTodo,
+  SquareChevronRight,
+  Ticket,
+} from "lucide-react";
 import { LuFileDiff } from "react-icons/lu";
 import DocumentIcon from "#/icons/document.svg?react";
 import DoubleCheckIcon from "#/icons/double-check.svg?react";
@@ -30,6 +36,10 @@ import { useAgentState, usePlanningAgentState } from "#/hooks/use-agent-state";
 import { AgentState } from "#/types/agent-state";
 import { Typography } from "#/ui/typography";
 import { mobileTopBarIconClassName } from "#/utils/mobile-top-bar-icon-button-classes";
+import { useFactoryTicket } from "#/factory/ticket"; // factory: Ticket tab
+
+// factory: no Build button (the orchestrator drives the steps).
+const FACTORY_DISABLE_BUILD = true;
 
 export function ConversationTabs({
   variant = "default",
@@ -48,6 +58,7 @@ export function ConversationTabs({
     useConversationLocalStorageState(conversationId);
 
   const { hasTaskList } = useTaskList();
+  const { data: factoryTicket } = useFactoryTicket(); // factory: Ticket tab
   const { backend } = useActiveBackend();
 
   const { handleBuildPlanClick } = useHandleBuildPlanClick();
@@ -147,6 +158,19 @@ export function ConversationTabs({
       label: t(CONVERSATION_TAB_LABEL_KEYS.usage),
     },
   ];
+
+  // factory: Ticket tab, first, only in factory ticket conversations.
+  if (factoryTicket) {
+    tabs.unshift({
+      tabValue: "ticket",
+      isActive: isTabActive("ticket"),
+      icon: Ticket,
+      onClick: () => selectTab("ticket"),
+      tooltipContent: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
+      tooltipAriaLabel: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
+      label: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
+    });
+  }
 
   if (hasTaskList) {
     // Insert after the file-related tabs.
@@ -431,31 +455,33 @@ export function ConversationTabs({
           </div>
         </div>
       </div>
-      {isTabActive("planner") && variant !== "compact" && (
-        <div
-          className={cn(
-            "flex h-10 min-h-10 shrink-0 items-center border-t border-border pl-2.5 pr-1",
-          )}
-        >
-          <button
-            type="button"
-            onClick={handleBuildPlanClick}
-            disabled={isBuildDisabled}
+      {!FACTORY_DISABLE_BUILD &&
+        isTabActive("planner") &&
+        variant !== "compact" && (
+          <div
             className={cn(
-              "flex h-5 min-w-17 items-center justify-center rounded bg-contrast px-2 transition-opacity",
-              isBuildDisabled
-                ? "cursor-not-allowed opacity-50"
-                : "cursor-pointer hover:opacity-90",
+              "flex h-10 min-h-10 shrink-0 items-center border-t border-border pl-2.5 pr-1",
             )}
-            data-testid="planner-tab-build-button"
           >
-            <Typography.Text className="text-2xs font-normal leading-5 text-contrast-foreground">
-              {/* eslint-disable-next-line i18next/no-literal-string */}
-              {t(I18nKey.COMMON$BUILD)} ⌘↩
-            </Typography.Text>
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={handleBuildPlanClick}
+              disabled={isBuildDisabled}
+              className={cn(
+                "flex h-5 min-w-17 items-center justify-center rounded bg-contrast px-2 transition-opacity",
+                isBuildDisabled
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer hover:opacity-90",
+              )}
+              data-testid="planner-tab-build-button"
+            >
+              <Typography.Text className="text-2xs font-normal leading-5 text-contrast-foreground">
+                {/* eslint-disable-next-line i18next/no-literal-string */}
+                {t(I18nKey.COMMON$BUILD)} ⌘↩
+              </Typography.Text>
+            </button>
+          </div>
+        )}
     </>
   );
 }

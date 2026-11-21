@@ -11,6 +11,8 @@ import { useOptionalConversationId } from "#/hooks/use-conversation-id";
  *
  * @returns An object containing handleBuildClick function
  */
+const FACTORY_DISABLE_BUILD = true; // factory
+
 export const useHandleBuildPlanClick = () => {
   const { setConversationMode } = useConversationStore();
   const { send } = useSendMessage();
@@ -26,6 +28,10 @@ export const useHandleBuildPlanClick = () => {
     (event?: React.MouseEvent<HTMLButtonElement> | KeyboardEvent) => {
       event?.preventDefault();
       event?.stopPropagation();
+      // factory: Build disabled everywhere (button, plan preview, Ctrl/Cmd+Enter).
+      // The orchestrator drives the steps; never let a key press tell the agent
+      // to execute PLAN.md.
+      if (FACTORY_DISABLE_BUILD) return;
 
       // Switch to code mode
       setConversationMode("code");
