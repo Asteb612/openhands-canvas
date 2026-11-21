@@ -1,0 +1,89 @@
+# Software-factory fork of OpenHands agent-canvas.
+# Upstream workflows are removed on this branch (they need upstream secrets and
+# publish upstream artifacts); this one checks the code and builds our image.
+name: factory
+
+on:
+  push:
+    branches: [factory]
+  pull_request:
+    branches: [factory]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.1"
+          cache: npm
+      - run: npm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  image:
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/asteb612/openhands-canvas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read pins from config/defaults.json
+        id: cfg
+        run: |
+          node -e '
+            const c = require("./config/defaults.json"), p = require("./package.json");
+            const out = [
+              `agent_server_image=${c.images.agentServer}:${c.versions.agentServer}-python`,
+              `agent_server_version=${c.versions.agentServer}`,
+              `automation_version=${c.versions.automation}`,
+              `canvas_version=${p.version}`,
+              `base_path=${c.paths.canvasBasePath}`,
+            ];
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, out.join("\n") + "\n");
+          '
+          echo "tag=$(node -p 'require("./package.json").version')-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Build (load locally for the smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:${{ steps.cfg.outputs.tag }}
+          # VITE_POSTHOG_API_KEY left empty on purpose: no product telemetry.
+          build-args: |
+            AGENT_SERVER_IMAGE=${{ steps.cfg.outputs.agent_server_image }}
+            AGENT_SERVER_VERSION=${{ steps.cfg.outputs.agent_server_version }}
+            AUTOMATION_VERSION=${{ steps.cfg.outputs.automation_version }}
+            AGENT_CANVAS_VERSION=${{ steps.cfg.outputs.canvas_version }}
+            OPENHANDS_BUILD_GIT_SHA=${{ github.sha }}
+            OPENHANDS_BUILD_GIT_REF=${{ github.ref }}
+            VITE_BASE_PATH=${{ steps.cfg.outputs.base_path }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test (container starts and stays up)
+        run: docker/smoke-test.sh "$IMAGE:${{ steps.cfg.outputs.tag }}"
+      - name: Push
+        if: github.event_name != 'pull_request'
+        run: docker push "$IMAGE:${{ steps.cfg.outputs.tag }}"
