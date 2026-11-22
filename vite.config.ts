@@ -117,6 +117,8 @@ export default defineConfig(({ mode }) => {
     VITE_BASE_PATH,
     VITE_VSCODE_BASE_PATH,
     VITE_VSCODE_TARGET,
+    // factory: local orchestrator for the workflow pages (software-factory/dev).
+    VITE_FACTORY_API_TARGET,
   } = loadEnv(mode, process.cwd());
 
   const isLibraryBuild = process.env.BUILD_LIB === "true";
@@ -285,6 +287,10 @@ export default defineConfig(({ mode }) => {
       // newly-discovered deps - Safari doesn't retry like Chrome does.
       noDiscovery: true,
       include: [
+        // factory: workflow editor (React Flow ships CJS use-sync-external-store).
+        "@xyflow/react",
+        "@dagrejs/dagre",
+        "use-sync-external-store/shim/with-selector",
         // Pre-bundle client entry dependencies so the first page load does not 504
         // with Vite's "Outdated Optimize Dep" before hydration finishes.
         // Safari is particularly sensitive to runtime dep optimization - it gets
@@ -431,6 +437,18 @@ export default defineConfig(({ mode }) => {
       host: VITE_BIND_HOST,
       allowedHosts: true,
       proxy: {
+        // factory: /factory-api/* -> local orchestrator /api/*, with the user header
+        // Authelia sets in production (dev only; never in a build).
+        ...(VITE_FACTORY_API_TARGET
+          ? {
+              "/factory-api": {
+                target: VITE_FACTORY_API_TARGET,
+                changeOrigin: true,
+                rewrite: (p: string) => p.replace(/^\/factory-api/, "/api"),
+                headers: { "Remote-User": "dev" },
+              },
+            }
+          : {}),
         "/api": {
           target: API_URL,
           changeOrigin: true,
