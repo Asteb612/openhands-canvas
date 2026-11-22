@@ -1,9 +1,22 @@
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { parseFactoryTicket, type FactoryTicket } from "#/factory/ticket";
 import { FactoryTicketView } from "#/factory/ticket-tab";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
+
+const render = (ui: React.ReactElement) =>
+  rtlRender(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 
 const mockSend = vi.fn().mockResolvedValue({ queued: false });
 vi.mock("#/hooks/use-send-message", () => ({

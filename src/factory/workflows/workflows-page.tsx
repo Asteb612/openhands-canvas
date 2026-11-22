@@ -11,6 +11,7 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useSearchParams } from "react-router";
 import { cn } from "#/utils/utils";
 import { useColorTheme } from "#/hooks/use-color-theme";
 import { COLOR_THEMES } from "#/themes/color-themes";
@@ -24,6 +25,7 @@ import {
   useArchiveWorkflow,
   useDuplicateWorkflow,
   useNodeTypes,
+  useResetWorkflow,
   useProjects,
   useRuns,
   useSaveWorkflow,
@@ -329,7 +331,14 @@ function RunsPanel({ workflowId }: { workflowId: string | null }) {
 
 // ------------------------------------------------------------------ editor
 
-function Editor({ workflowId }: { workflowId: string }) {
+function Editor({
+  workflowId,
+  initialNode,
+}: {
+  workflowId: string;
+  initialNode?: string | null;
+}) {
+  const initialNodeRef = React.useRef(initialNode ?? null);
   const { data, error, isLoading } = useWorkflow(workflowId);
   const { data: projects } = useProjects();
   const { data: runs } = useRuns();
@@ -338,6 +347,7 @@ function Editor({ workflowId }: { workflowId: string }) {
   const colorMode = COLOR_THEMES[useColorTheme()].appearance;
   const duplicate = useDuplicateWorkflow();
   const archive = useArchiveWorkflow();
+  const reset = useResetWorkflow();
 
   const [def, setDef] = React.useState<WorkflowDefinition | null>(null);
   const [baseVersion, setBaseVersion] = React.useState<number>(0);
@@ -369,14 +379,21 @@ function Editor({ workflowId }: { workflowId: string }) {
     setBaseVersion(data.workflow.latestVersion);
     setViewVersion(null);
     setDirty(false);
-    setSelectedNode(null);
+    setSelectedNode(
+      data.definition.nodes.some((n) => n.id === initialNodeRef.current)
+        ? initialNodeRef.current
+        : null,
+    );
+    initialNodeRef.current = null;
   }, [data]);
 
   const projectId = projects?.[0]?.id;
   const commands = projects?.[0]?.commands ?? [];
   const builtin = !!data?.workflow.builtin;
   const oldVersion = viewVersion !== null && viewVersion !== baseVersion;
-  const readOnly = builtin || oldVersion;
+  // Built-ins are editable in place (each save is a new version); only an old
+  // version on display is read-only.
+  const readOnly = oldVersion;
 
   // Server-side validation (also returns each node's ports), debounced.
   React.useEffect(() => {
@@ -636,11 +653,12 @@ function Editor({ workflowId }: { workflowId: string }) {
               </button>
             )}
             {builtin && (
-              <span className="text-xs text-muted">
-                Modèle en lecture seule : duplique-le pour le modifier.
+              <span className="text-xs text-muted" data-testid="wf-builtin">
+                modèle intégré
+                {data?.workflow.customised ? " (modifié)" : ""}
               </span>
             )}
-            {oldVersion && !builtin && (
+            {oldVersion && (
               <button
                 type="button"
                 className={button}
@@ -826,6 +844,30 @@ function Editor({ workflowId }: { workflowId: string }) {
                       Dupliquer
                     </button>
                   </div>
+                  {builtin && data?.workflow.customised && (
+                    <button
+                      type="button"
+                      className="mt-2 self-start text-xs text-muted hover:text-foreground"
+                      data-testid="wf-reset"
+                      disabled={reset.isPending || dirty}
+                      title={
+                        dirty ? "Enregistre ou recharge d’abord" : undefined
+                      }
+                      onClick={() =>
+                        reset.mutate(workflowId, {
+                          onSuccess: (r) =>
+                            setMessage({
+                              ok: true,
+                              text: `Modèle d’origine restauré (version ${r.version}).`,
+                            }),
+                          onError: (e) =>
+                            setMessage({ ok: false, text: errorText(e) }),
+                        })
+                      }
+                    >
+                      Revenir au modèle d’origine
+                    </button>
+                  )}
                   {!builtin && (
                     <button
                       type="button"
@@ -869,7 +911,11 @@ function Editor({ workflowId }: { workflowId: string }) {
 export default function WorkflowsPage() {
   const { data: workflows } = useWorkflows();
   const save = useSaveWorkflow();
-  const [selected, setSelected] = React.useState<string | null>(null);
+  // ?wf=<id>&node=<id>: opened from a ticket conversation ("Modifier le workflow").
+  const [params] = useSearchParams();
+  const [selected, setSelected] = React.useState<string | null>(
+    params.get("wf"),
+  );
   const [createError, setCreateError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -905,7 +951,13 @@ export default function WorkflowsPage() {
           )}
         </div>
         {selected ? (
-          <Editor key={selected} workflowId={selected} />
+          <Editor
+            key={selected}
+            workflowId={selected}
+            initialNode={
+              selected === params.get("wf") ? params.get("node") : null
+            }
+          />
         ) : (
           <div className="p-4 text-sm text-muted">Sélectionne un workflow.</div>
         )}

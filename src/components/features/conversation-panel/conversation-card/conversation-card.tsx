@@ -1,4 +1,5 @@
 import React from "react";
+import { FactoryRunBadge } from "#/factory/run-status"; // factory:
 import { Pin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ACPModelOption } from "#/constants/acp-providers";
@@ -313,6 +314,10 @@ export function ConversationCard({
           />
           {sandboxStatus === "ERROR" && !effectiveArchived && (
             <ConversationStatusBadges />
+          )}
+          {/* factory: workflow status of factory ticket conversations */}
+          {conversationId && (
+            <FactoryRunBadge conversationId={conversationId} />
           )}
         </div>
 
