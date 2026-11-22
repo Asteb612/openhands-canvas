@@ -7,8 +7,10 @@ import { COLOR_THEMES } from "#/themes/color-themes";
 import { useWorkflowVersion } from "./api";
 import { toFlow } from "./graph";
 import { WorkflowNodeCard } from "./workflow-node";
+import { RoutedEdge } from "./workflow-edge";
 
 const nodeTypes = { workflow: WorkflowNodeCard };
+const edgeTypes = { routed: RoutedEdge };
 
 /**
  * Read-only view of the exact workflow version a run follows, the current node
@@ -68,6 +70,7 @@ export function WorkflowPreview({
           nodes={flow.nodes}
           edges={flow.edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
