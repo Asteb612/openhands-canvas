@@ -21,7 +21,7 @@ Current base: **v1.43.0**.
 - No product telemetry: the image is built with an empty `VITE_POSTHOG_API_KEY`.
 
 ## Image
-`ghcr.io/asteb612/openhands-canvas:<canvas version>-<sha7>`, built from `docker/Dockerfile`
+`ghcr.io/asteb612/factory-canvas:<canvas version>-<sha7>`, built from `docker/Dockerfile`
 with the pins of `config/defaults.json`. The factory agent image
 (`software-factory/agent-image`) is built `FROM` it.
 
