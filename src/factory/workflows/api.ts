@@ -55,6 +55,8 @@ export interface WorkflowDefinition {
 
 export interface WorkflowSummary {
   id: string;
+  /** Built-in whose latest version was written by the owner (GET /workflows/:id only). */
+  customised?: boolean;
   name: string;
   description: string;
   builtin: boolean;
@@ -208,6 +210,32 @@ export function useWorkflow(id: string | null) {
   });
 }
 
+export function useWorkflowVersion(
+  id: string | undefined,
+  version: number | undefined,
+) {
+  return useQuery({
+    queryKey: [...KEY, "version", id, version],
+    enabled: !!id && !!version,
+    staleTime: Infinity, // versions are immutable
+    retry: false,
+    meta: { disableToast: true },
+    queryFn: () => fetchVersion(id!, version!),
+  });
+}
+
+export function useResetWorkflow() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) =>
+      factoryFetch<{ version: number }>(
+        `/workflows/${encodeURIComponent(id)}/reset`,
+        { method: "POST" },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
 export function fetchVersion(id: string, version: number) {
   return factoryFetch<{ definition: WorkflowDefinition }>(
     `/workflows/${encodeURIComponent(id)}/versions/${version}`,
@@ -242,6 +270,9 @@ export function useRuns(project?: string) {
         `/runs${project ? `?project=${encodeURIComponent(project)}` : ""}`,
       ).then((r) => r.runs),
     refetchInterval: 15_000,
+    // Shown on every conversation card: stay quiet when the API is unreachable.
+    retry: false,
+    meta: { disableToast: true },
   });
 }
 

@@ -26,6 +26,10 @@ const chatInterfaceUnmount = vi.fn();
 // that conversation as an automation setup on mount.
 const automationSetupPanelRender = vi.fn();
 
+// factory: the workflow banner reads the factory API (react-query); not under test here.
+vi.mock("#/factory/conversation-banner", () => ({
+  FactoryConversationBanner: () => null,
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));

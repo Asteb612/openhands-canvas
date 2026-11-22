@@ -13,6 +13,9 @@ import {
   type FactoryTicket,
   useFactoryTicket,
 } from "./ticket";
+import { Link } from "react-router";
+import { WorkflowPreview } from "./workflows/workflow-preview";
+import { workflowEditorLink } from "./conversation-banner";
 
 const STEP_ICON: Record<FactoryStepStatus, string> = {
   done: "✅",
@@ -247,6 +250,28 @@ export function FactoryTicketView({ ticket }: { ticket: FactoryTicket }) {
         </p>
       )}
       {ticket.review && <Decision ticket={ticket} />}
+      {ticket.workflow && (
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs text-muted">
+            <span>
+              Workflow {ticket.workflow.name} (v{ticket.workflow.version})
+            </span>
+            <Link
+              to={workflowEditorLink(ticket)!}
+              className="hover:text-foreground"
+              data-testid="factory-edit-workflow"
+            >
+              Modifier
+            </Link>
+          </div>
+          <WorkflowPreview
+            workflowId={ticket.workflow.id}
+            version={ticket.workflow.version}
+            currentNode={ticket.node}
+            height={320}
+          />
+        </section>
+      )}
       <p className="text-xs text-muted">
         Mis à jour {new Date(ticket.updatedAt).toLocaleString("fr-FR")}
       </p>

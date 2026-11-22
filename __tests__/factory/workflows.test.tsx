@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkflowDefinition } from "#/factory/workflows/api";
 import { autoLayout, renameNode, toFlow } from "#/factory/workflows/graph";
 import { blankDefinition, newNode } from "#/factory/workflows/defaults";
+import { MemoryRouter } from "react-router";
 import WorkflowsPage from "#/factory/workflows/workflows-page";
 
 const def: WorkflowDefinition = {
@@ -223,15 +224,19 @@ describe("WorkflowsPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <WorkflowsPage />
+        <MemoryRouter>
+          <WorkflowsPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
-  it("shows a template read-only and validates it server-side", async () => {
+  it("opens a built-in editable and validates it server-side", async () => {
     renderPage();
     expect(await screen.findByTestId("wf-node-review")).toBeInTheDocument();
-    expect(screen.getByText(/lecture seule/)).toBeInTheDocument();
-    expect(screen.queryByTestId("wf-save")).not.toBeInTheDocument();
+    expect(screen.getByTestId("wf-builtin")).toHaveTextContent(
+      "modèle intégré",
+    );
+    expect(screen.getByTestId("wf-save")).toBeDisabled(); // nothing changed yet
     await waitFor(() =>
       expect(screen.getByTestId("wf-validity")).toHaveTextContent("valide"),
     );
@@ -258,5 +263,50 @@ describe("WorkflowsPage", () => {
         (n) => n.id,
       ),
     ).toContain("agent_1");
+  });
+});
+
+describe("factory conversation UI", () => {
+  it("banner shows workflow, state, steps and a decide action", async () => {
+    const { FactoryBannerView } = await import("#/factory/conversation-banner");
+    const onDecide = vi.fn();
+    render(
+      <MemoryRouter>
+        <FactoryBannerView
+          onDecide={onDecide}
+          ticket={{
+            version: 1,
+            issue: 552,
+            title: "Étude",
+            state: "HUMAN",
+            stateLabel: "Validation de la spec",
+            steps: [
+              { key: "spec", label: "Spécification", status: "done" },
+              { key: "spec_review", label: "Validation", status: "review" },
+            ],
+            workflow: {
+              id: "speckit-full",
+              version: 2,
+              name: "SpecKit complet",
+            },
+            node: "spec_review",
+            review: { what: "la spécification", files: [] },
+            updatedAt: "2026-11-22T10:00:00Z",
+          }}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("factory-banner-workflow")).toHaveTextContent(
+      "SpecKit complet · v2",
+    );
+    expect(screen.getByTestId("factory-banner-state")).toHaveTextContent(
+      "à valider",
+    );
+    expect(screen.getByTestId("factory-banner-edit")).toHaveAttribute(
+      "href",
+      "/workflows?wf=speckit-full&node=spec_review",
+    );
+    await userEvent.click(screen.getByTestId("factory-banner-decide"));
+    expect(onDecide).toHaveBeenCalledOnce();
   });
 });
