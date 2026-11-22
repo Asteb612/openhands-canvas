@@ -52,6 +52,7 @@ import { AgentServerUIRoot } from "#/components/providers";
 import { TelemetryConsentBanner } from "#/components/features/analytics/telemetry-consent-banner";
 import { buildAgentCanvasPath } from "#/utils/base-path";
 import { useOnboardingCompletion } from "#/components/features/onboarding/use-onboarding-completion";
+import { useFactoryBootstrap } from "#/factory/bootstrap";
 import {
   NavigationProvider,
   useCurrentPathGetter,
@@ -381,6 +382,9 @@ export default function App() {
   // active suppresses reopen flicker. (The flag is only honored when the
   // active backend really is the locked Cloud host, so the stale-flag bypass
   // concerns above don't apply here.)
+  // Factory command center: the projects' backends replace first-run onboarding
+  // (never in locked-to-Cloud mode, where Cloud login owns onboarding).
+  const factoryPending = useFactoryBootstrap(markCompleted, !isLockedToCloud);
   const shouldCheckMainAppAuth = shouldUseMainAppCookieAuth();
   const showFirstRunOnboarding = isLockedToCloud
     ? !shouldCheckMainAppAuth &&
@@ -451,6 +455,10 @@ export default function App() {
     active.backend.kind === "cloud" &&
     activeCloudHealth?.disabled === true &&
     isCloudBackendApiKeyOrNetworkHealthError(activeCloudHealth.lastError);
+
+  if (showFirstRunOnboarding && factoryPending) {
+    return <AgentServerBootstrapLoading />;
+  }
 
   if (showFirstRunOnboarding) {
     return (
