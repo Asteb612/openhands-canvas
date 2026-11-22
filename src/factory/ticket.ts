@@ -14,6 +14,24 @@ const POLL_MS = 5_000;
 
 export type FactoryStepStatus = "done" | "current" | "review" | "todo";
 
+export interface FactoryOutcome {
+  id: string;
+  label: string;
+  kind: "approve" | "changes" | "reject" | "other";
+  requireComment: boolean;
+}
+
+/** Choices of a card written before outcomes existed. */
+export const DEFAULT_OUTCOMES: FactoryOutcome[] = [
+  { id: "approve", label: "Valider", kind: "approve", requireComment: false },
+  {
+    id: "changes",
+    label: "Demander des changements",
+    kind: "changes",
+    requireComment: true,
+  },
+];
+
 export interface FactoryTicket {
   version: 1;
   issue: number;
@@ -30,7 +48,12 @@ export interface FactoryTicket {
     what: string;
     files: string[];
     instructions?: string;
+    /** The human node's choices (one button each). Absent on old cards. */
+    outcomes?: FactoryOutcome[];
   } | null;
+  /** Workflow the run follows (generic engine). */
+  workflow?: { id: string; version: number; name: string };
+  node?: string | null;
   /** Latest note from the orchestrator (failure reason, suspension...). */
   note?: string | null;
   updatedAt: string;

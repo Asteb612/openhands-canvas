@@ -21,6 +21,8 @@ export default [
     route("apps", "routes/canvas-extensions.tsx"),
     route("extensions/:extensionName/*", "routes/canvas-extension-page.tsx"),
     route("mcp", "routes/mcp.tsx"),
+    // factory: workflow node editor (software-factory orchestrator API)
+    route("workflows", "factory/workflows/workflows-page.tsx"),
     route("settings", "routes/settings.tsx", [
       index("routes/settings-index.tsx"),
       route("llm", "routes/llm-settings.tsx"),

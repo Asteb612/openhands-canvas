@@ -6,6 +6,7 @@ import {
   Plus,
   Server,
   Settings,
+  Workflow, // factory:
 } from "lucide-react";
 import { OpenHandsLogoButton } from "#/components/shared/buttons/openhands-logo-button";
 import { NavigationLink } from "#/components/shared/navigation-link";
@@ -249,6 +250,14 @@ export function SidebarRailBody({
               <path d="M12 13.5V8" />
             </svg>
           }
+        />
+        {/* factory: workflow node editor */}
+        <SidebarNavLink
+          to="/workflows"
+          label="Workflows" // eslint-disable-line i18next/no-literal-string -- factory UI
+          testId="sidebar-factory-workflows-link"
+          collapsed={collapsed}
+          icon={<Workflow width={ICON_SIZE} height={ICON_SIZE} />}
         />
         {/* The interface manifest owns this entry's label, so an absent
             manifest leaves the rail without it rather than with host copy. */}

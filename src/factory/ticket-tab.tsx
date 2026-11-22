@@ -7,6 +7,8 @@ import { openWorkspaceFile } from "#/services/canvas-ui";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
 import {
+  DEFAULT_OUTCOMES,
+  type FactoryOutcome,
   type FactoryStepStatus,
   type FactoryTicket,
   useFactoryTicket,
@@ -71,19 +73,34 @@ function Stepper({ steps }: { steps: FactoryTicket["steps"] }) {
   );
 }
 
+/** The text the orchestrator reads: "/decide <outcome> [remarks]". */
+export function decisionCommand(outcomeId: string, remarks: string): string {
+  const r = remarks.trim();
+  return r ? `/decide ${outcomeId} ${r}` : `/decide ${outcomeId}`;
+}
+
+const OUTCOME_STYLE: Record<FactoryOutcome["kind"], string> = {
+  approve: "bg-contrast text-contrast-foreground hover:opacity-90",
+  changes: "border border-border text-foreground hover:bg-interactive-hover",
+  reject:
+    "border border-feedback-warning text-feedback-warning hover:opacity-90",
+  other: "border border-border text-foreground hover:bg-interactive-hover",
+};
+
 function Decision({ ticket }: { ticket: FactoryTicket }) {
   const sendDecision = useSendDecision();
-  const [confirming, setConfirming] = React.useState(false);
+  const [confirming, setConfirming] = React.useState<string | null>(null);
   const [remarks, setRemarks] = React.useState("");
   const [sent, setSent] = React.useState<string | null>(null);
   const review = ticket.review!;
+  const outcomes = review.outcomes?.length ? review.outcomes : DEFAULT_OUTCOMES;
 
   // A new review (state change) resets the local form.
   React.useEffect(() => {
-    setConfirming(false);
+    setConfirming(null);
     setRemarks("");
     setSent(null);
-  }, [ticket.state, ticket.updatedAt]);
+  }, [ticket.state, ticket.node, ticket.updatedAt]);
 
   if (sent) {
     return (
@@ -93,6 +110,16 @@ function Decision({ ticket }: { ticket: FactoryTicket }) {
       </p>
     );
   }
+
+  const choose = (o: FactoryOutcome) => {
+    // Approvals and rejections are confirmed by a second click.
+    if ((o.kind === "approve" || o.kind === "reject") && confirming !== o.id) {
+      setConfirming(o.id);
+      return;
+    }
+    sendDecision(decisionCommand(o.id, remarks));
+    setSent(o.label);
+  };
 
   return (
     <div
@@ -122,58 +149,44 @@ function Decision({ ticket }: { ticket: FactoryTicket }) {
           ))}
         </ul>
       )}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          data-testid="factory-approve"
-          className="cursor-pointer rounded bg-contrast px-3 py-1 text-sm text-contrast-foreground hover:opacity-90"
-          onClick={() => {
-            if (!confirming) {
-              setConfirming(true);
-              return;
-            }
-            sendDecision("/approve");
-            setSent("validé");
-          }}
-        >
-          {confirming ? "Confirmer la validation" : "Valider"}
-        </button>
+      <textarea
+        data-testid="factory-remarks"
+        value={remarks}
+        onChange={(e) => setRemarks(e.target.value)}
+        rows={3}
+        placeholder="Remarques (obligatoires pour certains choix)…"
+        className="w-full resize-y rounded border border-border bg-transparent p-2 text-sm text-foreground"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        {outcomes.map((o) => {
+          const disabled = o.requireComment && !remarks.trim();
+          return (
+            <button
+              key={o.id}
+              type="button"
+              data-testid={`factory-outcome-${o.id}`}
+              disabled={disabled}
+              title={disabled ? "Écris d’abord une remarque" : undefined}
+              className={cn(
+                "rounded px-3 py-1 text-sm",
+                OUTCOME_STYLE[o.kind],
+                disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+              )}
+              onClick={() => choose(o)}
+            >
+              {confirming === o.id ? `Confirmer : ${o.label}` : o.label}
+            </button>
+          );
+        })}
         {confirming && (
           <button
             type="button"
             className="cursor-pointer text-xs text-muted hover:underline"
-            onClick={() => setConfirming(false)}
+            onClick={() => setConfirming(null)}
           >
             Annuler
           </button>
         )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <textarea
-          data-testid="factory-remarks"
-          value={remarks}
-          onChange={(e) => setRemarks(e.target.value)}
-          rows={3}
-          placeholder="Changements demandés…"
-          className="w-full resize-y rounded border border-border bg-transparent p-2 text-sm text-foreground"
-        />
-        <button
-          type="button"
-          data-testid="factory-changes"
-          disabled={!remarks.trim()}
-          className={cn(
-            "self-start rounded border border-border px-3 py-1 text-sm text-foreground",
-            remarks.trim()
-              ? "cursor-pointer hover:bg-interactive-hover"
-              : "cursor-not-allowed opacity-50",
-          )}
-          onClick={() => {
-            sendDecision(`/changes ${remarks.trim()}`);
-            setSent("changements demandés");
-          }}
-        >
-          Demander des changements
-        </button>
       </div>
     </div>
   );
@@ -200,7 +213,14 @@ export function FactoryTicketView({ ticket }: { ticket: FactoryTicket }) {
           {ticket.title}
         </h2>
         <p className="text-xs text-muted">
-          {[ticket.repo, ticket.branch].filter(Boolean).join(" · ")}
+          {[
+            ticket.repo,
+            ticket.branch,
+            ticket.workflow &&
+              `workflow ${ticket.workflow.name} (v${ticket.workflow.version})`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       </header>
       <p className="text-sm" data-testid="factory-state">
