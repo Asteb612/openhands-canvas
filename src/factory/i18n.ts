@@ -456,6 +456,39 @@ const BASE = {
     "{runs} · {ok} % réussis · moy. {avg}",
     "{runs} · {ok}% succeeded · avg {avg}",
   ],
+  // --- Workflows written with the agent (conversation + draft)
+  agentCreate: ["Créer avec l'agent", "Create with the agent"],
+  agentEdit: ["Modifier avec l'agent", "Change with the agent"],
+  agentCreateTitle: [
+    "Créer un workflow avec l'agent",
+    "Create a workflow with the agent",
+  ],
+  agentEditTitle: [
+    "Modifier « {name} » avec l'agent",
+    "Change “{name}” with the agent",
+  ],
+  agentDialogHint: [
+    "Une conversation s'ouvre : l'agent écrit le brouillon, tu le vois en graphe dans l'onglet Workflow et c'est toi qui l'enregistres.",
+    "A conversation opens: the agent writes the draft, you see it as a graph in the Workflow tab, and you save it.",
+  ],
+  agentStartFrom: ["Partir de", "Start from"],
+  agentBlank: ["Un workflow vide", "An empty workflow"],
+  agentPrompt: ["Ce que doit faire le workflow", "What the workflow should do"],
+  agentPromptPlaceholder: [
+    "Ex. : chaque lundi à 8 h, faire le point sur les dépendances du dépôt et me demander de valider la liste des mises à jour.",
+    "E.g. every Monday at 8:00, review the repository's dependencies and ask me to approve the list of updates.",
+  ],
+  agentStart: ["Démarrer la conversation", "Start the conversation"],
+  agentNewWorkflow: ["Nouveau workflow", "New workflow"],
+  agentTabHint: [
+    "Brouillon écrit par l'agent, revalidé toutes les 3 s. Demande-lui des changements dans la conversation ; enregistre quand il est valide.",
+    "Draft written by the agent, re-validated every 3 s. Ask for changes in the conversation; save once it is valid.",
+  ],
+  agentSaveVersion: ["Enregistrer une nouvelle version", "Save a new version"],
+  agentSaveNew: ["Créer le workflow", "Create the workflow"],
+  agentSaved: ["Workflow {id} enregistré (v{v})", "Workflow {id} saved (v{v})"],
+  wfIdLabel: ["Identifiant", "Identifier"],
+  open: ["Ouvrir", "Open"],
 } as const;
 
 const S = { ...BASE, ...WORKFLOW_STRINGS } as const;

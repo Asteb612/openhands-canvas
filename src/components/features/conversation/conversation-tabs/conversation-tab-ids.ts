@@ -20,4 +20,5 @@ export const CONVERSATION_TAB_LABEL_KEYS: Record<ConversationTab, I18nKey> = {
   browser: I18nKey.COMMON$BROWSER,
   usage: I18nKey.COMMON$USAGE,
   ticket: I18nKey.FACTORY$TICKET, // factory: Ticket tab
+  workflow: I18nKey.FACTORY$WORKFLOW, // factory: workflow session
 };

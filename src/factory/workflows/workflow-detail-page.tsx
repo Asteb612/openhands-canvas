@@ -14,6 +14,7 @@ import {
   Pencil,
   Play,
   Settings2,
+  Sparkles,
   Zap,
 } from "lucide-react";
 import { displaySuccessToast } from "#/utils/custom-toast-handlers";
@@ -50,6 +51,7 @@ import {
   StateMessage,
   textActionClassName,
 } from "../ui";
+import { AgentWorkflowDialog } from "./agent-dialog";
 import { useWorkflowActions } from "./workflow-actions";
 import { WorkflowPreview } from "./workflow-preview";
 import { workflowPath } from "./workflow-list-page";
@@ -79,6 +81,7 @@ export default function WorkflowDetailPage() {
   );
   const { data, error, isLoading } = useWorkflow(scope, workflowId);
   const runNow = useRunNow();
+  const [agentOpen, setAgentOpen] = React.useState(false);
   const describe = useDescribeTrigger();
   const fmt = useFormatDateTime();
   const subject = useRunSubject();
@@ -182,6 +185,17 @@ export default function WorkflowDetailPage() {
             onClick={run}
           >
             {t("runNow")}
+          </Button>
+        )}
+        {projectId && (
+          <Button
+            type="button"
+            variant="secondary"
+            testId="wf-detail-agent"
+            startContent={<Sparkles className="size-4" aria-hidden />}
+            onClick={() => setAgentOpen(true)}
+          >
+            {t("agentEdit")}
           </Button>
         )}
         <Button
@@ -365,6 +379,14 @@ export default function WorkflowDetailPage() {
         </div>
       </div>
       {actions.dialogs}
+      {agentOpen && projectId && (
+        <AgentWorkflowDialog
+          project={projectId}
+          scope={scope.kind}
+          workflow={summary}
+          onClose={() => setAgentOpen(false)}
+        />
+      )}
     </div>
   );
 }

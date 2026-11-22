@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { CopyPlus, LayoutTemplate, Plus } from "lucide-react";
+import { CopyPlus, LayoutTemplate, Plus, Sparkles } from "lucide-react";
 import { displaySuccessToast } from "#/utils/custom-toast-handlers";
 import {
   TEMPLATE_SCOPE,
@@ -34,6 +34,7 @@ import {
   SubHeading,
   Switch,
 } from "../ui";
+import { AgentWorkflowDialog } from "./agent-dialog";
 import { blankDefinition } from "./defaults";
 import { IdDialog } from "./id-dialog";
 import { WorkflowCard } from "./workflow-card";
@@ -70,7 +71,10 @@ export default function WorkflowListPage() {
   );
   const [showArchived, setShowArchived] = React.useState(false);
   const [dialog, setDialog] = React.useState<
-    { kind: "new" } | { kind: "fromTemplate"; template?: string } | null
+    | { kind: "new" }
+    | { kind: "fromTemplate"; template?: string }
+    | { kind: "agent" }
+    | null
   >(null);
   const ready = !projectsLoading;
   const {
@@ -140,6 +144,17 @@ export default function WorkflowListPage() {
         }
         actions={
           <>
+            {projectId && (
+              <Button
+                type="button"
+                variant="secondary"
+                testId="wf-create-with-agent"
+                startContent={<Sparkles className="size-4" aria-hidden />}
+                onClick={() => setDialog({ kind: "agent" })}
+              >
+                {t("agentCreate")}
+              </Button>
+            )}
             {tab === "project" && (
               <Button
                 type="button"
@@ -263,6 +278,14 @@ export default function WorkflowListPage() {
             ))}
           </CardGrid>
         </section>
+      )}
+      {dialog?.kind === "agent" && projectId && (
+        <AgentWorkflowDialog
+          project={projectId}
+          scope={tab}
+          templates={tab === "project" ? (templates ?? []) : undefined}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === "new" && (
         <IdDialog
