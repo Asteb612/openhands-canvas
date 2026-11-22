@@ -1,11 +1,10 @@
-import { render as rtlRender, screen } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseFactoryTicket, type FactoryTicket } from "#/factory/ticket";
 import { FactoryTicketView } from "#/factory/ticket-tab";
-import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
 
 const render = (ui: React.ReactElement) =>
   rtlRender(
@@ -18,10 +17,6 @@ const render = (ui: React.ReactElement) =>
     </QueryClientProvider>,
   );
 
-const mockSend = vi.fn().mockResolvedValue({ queued: false });
-vi.mock("#/hooks/use-send-message", () => ({
-  useSendMessage: () => ({ send: mockSend }),
-}));
 vi.mock("#/hooks/use-conversation-id", () => ({
   useOptionalConversationId: () => ({ conversationId: "conv-1" }),
   useConversationId: () => ({ conversationId: "conv-1" }),
@@ -38,7 +33,7 @@ const base: FactoryTicket = {
   url: "https://github.com/o/r/issues/552",
   repo: "o/r",
   branch: "factory/552-etude",
-  state: "SPEC_REVIEW",
+  state: "HUMAN",
   stateLabel: "Spec à valider",
   steps: [
     { key: "spec", label: "Spec", status: "review" },
@@ -49,113 +44,119 @@ const base: FactoryTicket = {
   updatedAt: "2026-11-21T18:00:00Z",
 };
 
-const sentTexts = () =>
-  mockSend.mock.calls.map(
-    (c) => (c[0] as { args: { content: string } }).args.content,
-  );
-
-describe("factory ticket", () => {
+describe("factory ticket tab", () => {
+  let calls: { url: string; body?: unknown }[];
   beforeEach(() => {
-    mockSend.mockClear();
-    mockOpenFile.mockClear();
-    useOptimisticUserMessageStore.getState().clearPendingMessages();
+    calls = [];
+    mockOpenFile.mockReset();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      vi.fn(async (input: string | URL | Request, init: RequestInit = {}) => {
+        const url = String(input);
+        calls.push({
+          url,
+          body: init.body ? JSON.parse(String(init.body)) : undefined,
+        });
+        const json = (d: unknown) =>
+          new Response(JSON.stringify(d), { status: 200 });
+        if (url.endsWith("/runs/7/review"))
+          return json({
+            run: {
+              id: 7,
+              project: "autoriz",
+              issue: 552,
+              title: "Étude urbaine",
+              prNumber: null,
+              conversationId: "conv-1",
+              workflow: "speckit-full",
+            },
+            node: {
+              id: "spec_review",
+              label: "Revue",
+              title: "Spécification à valider",
+              what: "la spécification",
+              instructions: "",
+              outcomes: [
+                {
+                  id: "approve",
+                  label: "Valider",
+                  kind: "approve",
+                  requireComment: false,
+                },
+                {
+                  id: "changes",
+                  label: "Demander des changements",
+                  kind: "changes",
+                  requireComment: true,
+                },
+                {
+                  id: "drop",
+                  label: "Abandonner",
+                  kind: "reject",
+                  requireComment: false,
+                },
+              ],
+            },
+            files: [
+              { path: "specs/spec.md", content: "# Spec", truncated: false },
+            ],
+          });
+        return json({ ok: true, via: "canvas" });
+      }) as typeof fetch,
+    );
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it("parses a valid card and rejects anything else", () => {
     expect(parseFactoryTicket(JSON.stringify(base))?.issue).toBe(552);
-    expect(parseFactoryTicket("not json")).toBeNull();
+    expect(parseFactoryTicket("{")).toBeNull();
     expect(
       parseFactoryTicket(JSON.stringify({ ...base, version: 2 })),
     ).toBeNull();
-    expect(parseFactoryTicket(JSON.stringify({ issue: 1 }))).toBeNull();
   });
 
-  it("shows state, steps and the files to review", async () => {
-    render(<FactoryTicketView ticket={base} />);
+  it("shows state and steps", () => {
+    render(<FactoryTicketView ticket={{ ...base, review: null }} />);
     expect(screen.getByTestId("factory-state")).toHaveTextContent(
       "Spec à valider",
     );
-    expect(screen.getByTestId("factory-steps")).toHaveTextContent("Spec");
-    await userEvent.click(screen.getByText("specs/spec.md"));
+    expect(screen.getByText("Spec")).toBeInTheDocument();
+    expect(screen.queryByTestId("factory-decision")).toBeNull();
+  });
+
+  it("decides through the same panel as the dashboard; files open in Canvas' viewer", async () => {
+    render(<FactoryTicketView ticket={base} runId={7} project="autoriz" />);
+    expect(
+      await screen.findByText("Spécification à valider"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: /specs\/spec\.md/ }));
     expect(mockOpenFile).toHaveBeenCalledWith("specs/spec.md");
+    expect(screen.getByTestId("review-outcome-changes")).toBeDisabled();
+    await userEvent.type(
+      screen.getByTestId("review-comment"),
+      "Préciser le format",
+    );
+    await userEvent.click(screen.getByTestId("review-outcome-changes"));
+    await waitFor(() =>
+      expect(calls.find((c) => c.url.endsWith("/runs/7/decide"))?.body).toEqual(
+        { outcome: "changes", comment: "Préciser le format" },
+      ),
+    );
   });
 
-  it("approves only after an explicit confirmation", async () => {
-    const user = userEvent.setup();
+  it("asks a confirmation before a rejection", async () => {
+    render(<FactoryTicketView ticket={base} runId={7} project="autoriz" />);
+    await userEvent.click(await screen.findByTestId("review-outcome-drop"));
+    expect(calls.some((c) => c.url.endsWith("/decide"))).toBe(false);
+    await userEvent.click(await screen.findByTestId("confirm-button"));
+    await waitFor(() =>
+      expect(calls.find((c) => c.url.endsWith("/runs/7/decide"))?.body).toEqual(
+        { outcome: "drop", comment: "" },
+      ),
+    );
+  });
+
+  it("without the factory API, explains how to decide in the conversation", () => {
     render(<FactoryTicketView ticket={base} />);
-    await user.click(screen.getByTestId("factory-outcome-approve"));
-    expect(mockSend).not.toHaveBeenCalled();
-    await user.click(screen.getByTestId("factory-outcome-approve"));
-    expect(sentTexts()).toEqual(["/decide approve"]);
-    expect(screen.getByTestId("factory-decision-sent")).toBeInTheDocument();
-  });
-
-  it("sends the changes choice with the remarks, never an empty one", async () => {
-    const user = userEvent.setup();
-    render(<FactoryTicketView ticket={base} />);
-    expect(screen.getByTestId("factory-outcome-changes")).toBeDisabled();
-    await user.type(
-      screen.getByTestId("factory-remarks"),
-      "Ajoute le cas limite X",
-    );
-    await user.click(screen.getByTestId("factory-outcome-changes"));
-    expect(sentTexts()).toEqual(["/decide changes Ajoute le cas limite X"]);
-  });
-
-  it("draws one button per workflow outcome", async () => {
-    const user = userEvent.setup();
-    render(
-      <FactoryTicketView
-        ticket={{
-          ...base,
-          workflow: { id: "bugfix", version: 2, name: "Correctif" },
-          review: {
-            what: "le test manuel",
-            files: [],
-            outcomes: [
-              {
-                id: "ok",
-                label: "Testé, OK",
-                kind: "approve",
-                requireComment: false,
-              },
-              {
-                id: "retest",
-                label: "À refaire",
-                kind: "changes",
-                requireComment: true,
-              },
-              {
-                id: "drop",
-                label: "Abandonner",
-                kind: "reject",
-                requireComment: false,
-              },
-              {
-                id: "later",
-                label: "Plus tard",
-                kind: "other",
-                requireComment: false,
-              },
-            ],
-          },
-        }}
-      />,
-    );
-    expect(screen.getByText(/workflow Correctif \(v2\)/)).toBeInTheDocument();
-    expect(screen.getByTestId("factory-outcome-retest")).toBeDisabled();
-    await user.click(screen.getByTestId("factory-outcome-drop"));
-    expect(mockSend).not.toHaveBeenCalled(); // rejection needs a confirmation
-    await user.click(screen.getByTestId("factory-outcome-later"));
-    expect(sentTexts()).toEqual(["/decide later"]);
-  });
-
-  it("has no decision box when nothing is awaited", () => {
-    render(
-      <FactoryTicketView
-        ticket={{ ...base, state: "PLANNING", review: null }}
-      />,
-    );
-    expect(screen.queryByTestId("factory-decision")).not.toBeInTheDocument();
+    expect(screen.getByText(/\/decide/)).toBeInTheDocument();
   });
 });

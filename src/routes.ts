@@ -21,10 +21,20 @@ export default [
     route("apps", "routes/canvas-extensions.tsx"),
     route("extensions/:extensionName/*", "routes/canvas-extension-page.tsx"),
     route("mcp", "routes/mcp.tsx"),
-    // factory: workflow node editor (software-factory orchestrator API)
-    route("workflows", "factory/workflows/workflows-page.tsx"),
-    route("tickets", "factory/tickets/tickets-page.tsx"),
-    route("factory-project", "factory/project-page.tsx"),
+    // factory: command center pages (software-factory orchestrator API)
+    route("factory/tickets", "factory/tickets/tickets-page.tsx"),
+    route("factory/workflows", "factory/workflows/workflows-page.tsx"),
+    route("factory/project", "factory/project-page.tsx"),
+    // factory: old URLs
+    route("tickets", "factory/legacy-redirect.tsx", {
+      id: "factory-legacy-tickets",
+    }),
+    route("workflows", "factory/legacy-redirect.tsx", {
+      id: "factory-legacy-workflows",
+    }),
+    route("factory-project", "factory/legacy-redirect.tsx", {
+      id: "factory-legacy-project",
+    }),
     route("settings", "routes/settings.tsx", [
       index("routes/settings-index.tsx"),
       route("llm", "routes/llm-settings.tsx"),

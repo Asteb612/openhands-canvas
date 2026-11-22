@@ -1,68 +1,59 @@
-/* eslint-disable i18next/no-literal-string -- factory UI is French-only */
+/**
+ * The active project's settings: state and pause, its own workflows (enabled, default),
+ * board columns, notifications, and its versioned configuration (read-only: the
+ * project file lives in the infra repo).
+ */
 import React from "react";
-import toast from "react-hot-toast";
+import { Link } from "react-router";
 import { useQueries } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
-import { cn } from "#/utils/utils";
-import { runStateOf } from "./run-status";
-import { useSelectedProject } from "./project-context";
 import {
-  factoryFetch,
+  ArrowDown,
+  ArrowUp,
+  PauseCircle,
+  PlayCircle,
+  Trash2,
+} from "lucide-react";
+import { cn } from "#/utils/utils";
+import { displaySuccessToast } from "#/utils/custom-toast-handlers";
+import {
   NOTIFY_KINDS,
+  factoryFetch,
+  factoryKeys,
+  reportFactoryError,
   useFactoryStatus,
   useSaveProjectSettings,
+  useSetProjectPause,
   useSetProjectWorkflows,
   useWorkflows,
   type BoardColumn,
   type FactoryProject,
   type NotifyKind,
+  type ProjectSettings,
   type WorkflowDefinition,
-} from "./workflows/api";
-import { DEFAULT_COLUMNS, RUN_STATES } from "./tickets/columns";
+} from "./api";
+import { useFactoryLocale, useFactoryT, type FactoryKey } from "./i18n";
 import {
   enableBrowserNotifications,
   notificationsSupported,
   useNotifyPref,
 } from "./notifier";
-
-const input =
-  "rounded border border-border bg-base-secondary px-2 py-1 text-xs text-foreground";
-const button =
-  "cursor-pointer rounded border border-border px-2 py-1 text-xs hover:bg-tertiary disabled:cursor-not-allowed disabled:opacity-50";
-const primary =
-  "cursor-pointer rounded bg-contrast px-3 py-1 text-xs font-semibold text-contrast-foreground hover:opacity-90 disabled:opacity-50";
-
-const NOTIFY_LABEL: Record<NotifyKind, string> = {
-  human: "Décision attendue",
-  failed: "Échec",
-  quota: "Quota atteint",
-  completed: "Terminé",
-};
-
-function Section({
-  title,
-  hint,
-  children,
-  testId,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-  testId?: string;
-}) {
-  return (
-    <section
-      className="flex flex-col gap-2 rounded-md border border-border p-3"
-      data-testid={testId}
-    >
-      <header>
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {hint && <p className="text-xs text-muted">{hint}</p>}
-      </header>
-      {children}
-    </section>
-  );
-}
+import { useSelectedProject } from "./project-context";
+import { RUN_STATES, stateLook } from "./states";
+import { defaultColumns } from "./tickets/columns";
+import {
+  Button,
+  FactoryPage,
+  Field,
+  Notice,
+  Pill,
+  Section,
+  StateMessage,
+  Switch,
+  fieldClassName,
+  selectClassName,
+  textActionClassName,
+  useConfirm,
+} from "./ui";
 
 export function slugify(title: string, taken: string[]): string {
   const base =
@@ -79,29 +70,124 @@ export function slugify(title: string, taken: string[]): string {
   return id;
 }
 
+function settingsWith(
+  project: FactoryProject,
+  patch: Partial<ProjectSettings>,
+): ProjectSettings {
+  return {
+    notify: project.settings?.notify ?? {
+      events: ["human", "failed", "quota"],
+    },
+    ...(project.settings?.columns ? { columns: project.settings.columns } : {}),
+    ...patch,
+  };
+}
+
+function StateSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
+  const locale = useFactoryLocale();
+  const pause = useSetProjectPause();
+  const { ask, modal } = useConfirm();
+  const set = (paused: boolean) =>
+    pause.mutate(
+      { projectId: project.id, paused },
+      {
+        onSuccess: () =>
+          displaySuccessToast(paused ? t("pausedToast") : t("resumedToast")),
+        onError: reportFactoryError,
+      },
+    );
+  return (
+    <>
+      {project.status === "error" && (
+        <Notice tone="danger">
+          {t("projectError", { error: project.error ?? "" })}
+        </Notice>
+      )}
+      {project.status === "inactive" && (
+        <Notice tone="info">{t("projectInactive")}</Notice>
+      )}
+      {project.paused ? (
+        <Notice tone="warning" testId="project-paused">
+          <span className="flex-1">
+            {t("projectPausedBy", {
+              at: new Date(project.paused.at).toLocaleString(locale),
+              by: project.paused.by,
+            })}
+          </span>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => set(false)}
+            isDisabled={pause.isPending}
+            testId="project-resume"
+            startContent={<PlayCircle className="size-4" aria-hidden />}
+          >
+            {t("resumeProject")}
+          </Button>
+        </Notice>
+      ) : (
+        project.status === "ok" && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              isDisabled={pause.isPending}
+              onClick={() =>
+                ask(
+                  t("pauseProjectConfirm", { p: project.name }),
+                  () => set(true),
+                  { confirmText: t("pauseProject") },
+                )
+              }
+              testId="project-pause"
+              startContent={<PauseCircle className="size-4" aria-hidden />}
+            >
+              {t("pauseProject")}
+            </Button>
+          </div>
+        )
+      )}
+      {modal}
+    </>
+  );
+}
+
 function WorkflowsSection({ project }: { project: FactoryProject }) {
-  const { data: workflows } = useWorkflows();
+  const t = useFactoryT();
+  const { data: workflows, isLoading } = useWorkflows({
+    kind: "project",
+    project: project.id,
+  });
   const setWf = useSetProjectWorkflows();
   const save = (def: string, enabled: string[]) =>
     setWf.mutate(
       { projectId: project.id, default: def, enabled },
       {
-        onSuccess: () => toast.success("Workflows du projet enregistrés"),
-        onError: (e) => toast.error((e as Error).message),
+        onSuccess: () => displaySuccessToast(t("workflowsSaved")),
+        onError: reportFactoryError,
       },
     );
   return (
     <Section
-      title="Workflows du projet"
-      hint="Ceux proposés comme type de tâche et dont les déclencheurs s'appliquent ici. Le workflow par défaut démarre sur factory:ready."
+      title={t("workflowsSection")}
+      description={t("workflowsSectionHint")}
       testId="project-workflows"
+      actions={
+        <Link to="/factory/workflows" className={textActionClassName}>
+          {t("editWorkflow")}
+        </Link>
+      }
     >
-      <table className="text-xs">
+      {isLoading && <StateMessage kind="loading" />}
+      <table className="text-sm">
         <thead className="text-muted">
           <tr>
-            <th className="w-16 text-left font-normal">Activé</th>
-            <th className="w-20 text-left font-normal">Par défaut</th>
-            <th className="text-left font-normal">Workflow</th>
+            <th className="w-20 py-1 text-left font-normal">{t("enabled")}</th>
+            <th className="w-24 py-1 text-left font-normal">
+              {t("defaultCol")}
+            </th>
+            <th className="py-1 text-left font-normal">{t("workflow")}</th>
           </tr>
         </thead>
         <tbody>
@@ -109,8 +195,8 @@ function WorkflowsSection({ project }: { project: FactoryProject }) {
             const enabled = project.enabledWorkflows.includes(w.id);
             const isDefault = project.defaultWorkflow === w.id;
             return (
-              <tr key={w.id}>
-                <td>
+              <tr key={w.id} className="border-t border-border">
+                <td className="py-1.5">
                   <input
                     type="checkbox"
                     checked={enabled}
@@ -123,22 +209,44 @@ function WorkflowsSection({ project }: { project: FactoryProject }) {
                           : project.enabledWorkflows.filter((x) => x !== w.id),
                       )
                     }
-                    aria-label={`Activer ${w.name}`}
+                    aria-label={`${t("enabled")} ${w.name}`}
                   />
                 </td>
-                <td>
+                <td className="py-1.5">
                   <input
                     type="radio"
                     name="default-workflow"
                     checked={isDefault}
                     disabled={!enabled || setWf.isPending}
                     onChange={() => save(w.id, project.enabledWorkflows)}
-                    aria-label={`${w.name} par défaut`}
+                    aria-label={`${t("defaultCol")} ${w.name}`}
                   />
                 </td>
-                <td className="py-0.5">
-                  <span className="text-foreground">{w.name}</span>{" "}
-                  <span className="font-mono text-muted">{w.id}</span>
+                <td className="py-1.5">
+                  <Link
+                    to={`/factory/workflows?wf=${encodeURIComponent(w.id)}`}
+                    className="text-content hover:underline"
+                  >
+                    {w.name}
+                  </Link>{" "}
+                  <span className="font-mono text-xs text-muted">{w.id}</span>
+                  {w.source && (
+                    <span className="ml-2 text-xs text-muted">
+                      {t("fromTemplate", { t: w.source })}
+                    </span>
+                  )}
+                  {w.templateUpdate && (
+                    <Pill
+                      tone="info"
+                      title={t("templateUpdate", {
+                        t: w.templateUpdate.templateId,
+                        from: w.templateUpdate.from,
+                        to: w.templateUpdate.to,
+                      })}
+                    >
+                      {`v${w.templateUpdate.to}`}
+                    </Pill>
+                  )}
                 </td>
               </tr>
             );
@@ -149,17 +257,20 @@ function WorkflowsSection({ project }: { project: FactoryProject }) {
   );
 }
 
-/** "workflow/node" choices from the latest version of each enabled workflow. */
-function useNodeChoices(workflowIds: string[]) {
+/** "workflow/node" choices from the latest version of each of the project's workflows. */
+function useNodeChoices(project: string, workflowIds: string[]) {
   const results = useQueries({
     queries: workflowIds.map((id) => ({
-      queryKey: ["factory", "workflow", id],
+      queryKey: factoryKeys.workflow({ kind: "project", project }, id),
       queryFn: () =>
         factoryFetch<{
           workflow: { name: string };
           definition: WorkflowDefinition;
-        }>(`/workflows/${encodeURIComponent(id)}`),
+        }>(
+          `/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(id)}`,
+        ),
       refetchOnWindowFocus: false,
+      meta: { disableToast: true },
     })),
   });
   // Cheap to rebuild: a handful of workflows and nodes.
@@ -183,93 +294,89 @@ function ColumnEditor({
   onChange: (c: BoardColumn) => void;
   nodeChoices: { key: string; label: string; nodeId: string }[];
 }) {
+  const t = useFactoryT();
   const [pick, setPick] = React.useState("");
-  const toggleState = (s: string) => {
-    const states = value.states ?? [];
-    onChange({
-      ...value,
-      states: states.includes(s)
-        ? states.filter((x) => x !== s)
-        : [...states, s],
-    });
-  };
+  const states = value.states ?? [];
   const nodes = value.nodes ?? [];
   const labelOf = (k: string) =>
     k.startsWith("*/")
-      ? `toute étape « ${k.slice(2)} »`
+      ? t("anyStepNamed", { id: k.slice(2) })
       : (nodeChoices.find((c) => c.key === k)?.label ?? k);
   // Same node id in several workflows: offer the "*/<id>" shortcut too.
-  const ids = [...new Set(nodeChoices.map((c) => c.nodeId))].filter(
+  const shared = [...new Set(nodeChoices.map((c) => c.nodeId))].filter(
     (id) => nodeChoices.filter((c) => c.nodeId === id).length > 1,
   );
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
-        <label className="flex flex-col gap-0.5 text-3xs text-muted">
-          Titre
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
+        <Field label={t("columnTitle")} className="w-48">
           <input
-            className={cn(input, "w-40")}
+            className={fieldClassName}
             value={value.title}
             onChange={(e) => onChange({ ...value, title: e.target.value })}
             data-testid={`column-title-${value.id}`}
           />
-        </label>
-        <label className="flex min-w-48 flex-1 flex-col gap-0.5 text-3xs text-muted">
-          Aide (sous le titre)
+        </Field>
+        <Field label={t("columnHint")} className="min-w-48 flex-1">
           <input
-            className={input}
+            className={fieldClassName}
             value={value.hint ?? ""}
             onChange={(e) => onChange({ ...value, hint: e.target.value })}
           />
-        </label>
+        </Field>
       </div>
-      <div className="flex flex-wrap items-center gap-1 text-3xs text-muted">
-        États :
+      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
+        <span className="mr-1">{t("states")}</span>
         {RUN_STATES.map((s) => {
-          const on = (value.states ?? []).includes(s);
+          const on = states.includes(s);
           return (
             <button
               key={s}
               type="button"
-              onClick={() => toggleState(s)}
+              onClick={() =>
+                onChange({
+                  ...value,
+                  states: on ? states.filter((x) => x !== s) : [...states, s],
+                })
+              }
               className={cn(
-                "cursor-pointer rounded-full border px-2 leading-5",
+                "cursor-pointer rounded-full border px-2 text-xs leading-6",
                 on
-                  ? "border-contrast text-foreground"
-                  : "border-border text-muted",
+                  ? "border-primary text-content"
+                  : "border-border text-muted hover:text-content",
               )}
               aria-pressed={on}
               data-testid={`column-${value.id}-state-${s}`}
             >
-              {runStateOf(s).label}
+              {t(stateLook(s).label)}
             </button>
           );
         })}
-        {!(value.states ?? []).length && <span>(tous)</span>}
+        {!states.length && <span className="text-xs">{t("any")}</span>}
       </div>
-      <div className="flex flex-wrap items-center gap-1 text-3xs text-muted">
-        Étapes :
+      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
+        <span className="mr-1">{t("steps")}</span>
         {nodes.map((k) => (
           <span
             key={k}
-            className="flex items-center gap-1 rounded-full border border-border px-2 leading-5 text-foreground"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2 text-xs leading-6 text-content"
           >
             {labelOf(k)}
             <button
               type="button"
-              className="cursor-pointer text-muted hover:text-foreground"
+              className="cursor-pointer text-muted hover:text-content"
               onClick={() =>
                 onChange({ ...value, nodes: nodes.filter((x) => x !== k) })
               }
-              aria-label={`Retirer ${labelOf(k)}`}
+              aria-label={t("remove", { name: labelOf(k) })}
             >
               ×
             </button>
           </span>
         ))}
-        {!nodes.length && <span>(toutes)</span>}
+        {!nodes.length && <span className="text-xs">{t("anyStep")}</span>}
         <select
-          className={cn(input, "text-3xs")}
+          className={cn(selectClassName, "h-8 min-h-8 w-auto text-xs")}
           value={pick}
           onChange={(e) => {
             const k = e.target.value;
@@ -279,10 +386,10 @@ function ColumnEditor({
           }}
           data-testid={`column-${value.id}-add-node`}
         >
-          <option value="">+ étape…</option>
-          {ids.map((id) => (
+          <option value="">{t("addStep")}</option>
+          {shared.map((id) => (
             <option key={`*/${id}`} value={`*/${id}`}>
-              toute étape « {id} »
+              {t("anyStepNamed", { id })}
             </option>
           ))}
           {nodeChoices.map((c) => (
@@ -297,18 +404,20 @@ function ColumnEditor({
 }
 
 function ColumnsSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
   const save = useSaveProjectSettings();
   const saved = project.settings?.columns;
-  const [cols, setCols] = React.useState<BoardColumn[]>(
-    saved?.length ? saved : DEFAULT_COLUMNS,
+  const initial = React.useMemo(
+    () => (saved?.length ? saved : defaultColumns(t)),
+    [saved, t],
   );
+  const [cols, setCols] = React.useState<BoardColumn[]>(initial);
   const [dirty, setDirty] = React.useState(false);
   React.useEffect(() => {
-    setCols(saved?.length ? saved : DEFAULT_COLUMNS);
+    setCols(initial);
     setDirty(false);
-  }, [project.id, saved]);
-  const nodeChoices = useNodeChoices(project.enabledWorkflows);
-
+  }, [initial]);
+  const nodeChoices = useNodeChoices(project.id, project.enabledWorkflows);
   const edit = (next: BoardColumn[]) => {
     setCols(next);
     setDirty(true);
@@ -319,57 +428,53 @@ function ColumnsSection({ project }: { project: FactoryProject }) {
     next.splice(i + d, 0, c!);
     edit(next);
   };
-  const persist = (columns: BoardColumn[] | undefined) =>
+  const persist = (columns: BoardColumn[] | undefined) => {
+    const { columns: _previous, ...rest } = settingsWith(project, {});
     save.mutate(
       {
         projectId: project.id,
-        settings: {
-          notify: project.settings?.notify ?? {
-            events: ["human", "failed", "quota"],
-          },
-          ...(columns ? { columns } : {}),
-        },
+        settings: columns ? { ...rest, columns } : rest,
       },
       {
         onSuccess: () => {
-          toast.success("Colonnes enregistrées");
+          displaySuccessToast(t("columnsSaved"));
           setDirty(false);
         },
-        onError: (e) => toast.error((e as Error).message),
+        onError: reportFactoryError,
       },
     );
-
+  };
   return (
     <Section
-      title="Colonnes du tableau Tickets"
-      hint="Un ticket va dans la première colonne dont tous les filtres correspondent (états et étapes ; vide = tout). Ceux qui ne correspondent à aucune colonne vont dans « Autres »."
+      title={t("columnsSection")}
+      description={t("columnsHint")}
       testId="project-columns"
     >
       <ol className="flex flex-col gap-2">
         {cols.map((c, i) => (
           <li
             key={c.id}
-            className="flex gap-2 rounded border border-border p-2"
+            className="flex gap-3 rounded-lg border border-border p-3"
             data-testid={`column-row-${c.id}`}
           >
             <div className="flex flex-col gap-1">
               <button
                 type="button"
-                className="cursor-pointer text-muted hover:text-foreground disabled:opacity-30"
+                className="cursor-pointer text-muted hover:text-content disabled:opacity-30"
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
-                aria-label="Monter"
+                aria-label={t("moveUp")}
               >
-                <ArrowUp className="size-3" />
+                <ArrowUp className="size-4" />
               </button>
               <button
                 type="button"
-                className="cursor-pointer text-muted hover:text-foreground disabled:opacity-30"
+                className="cursor-pointer text-muted hover:text-content disabled:opacity-30"
                 disabled={i === cols.length - 1}
                 onClick={() => move(i, 1)}
-                aria-label="Descendre"
+                aria-label={t("moveDown")}
               >
-                <ArrowDown className="size-3" />
+                <ArrowDown className="size-4" />
               </button>
             </div>
             <div className="min-w-0 flex-1">
@@ -383,20 +488,20 @@ function ColumnsSection({ project }: { project: FactoryProject }) {
             </div>
             <button
               type="button"
-              className="cursor-pointer self-start text-muted hover:text-status-error"
+              className="cursor-pointer self-start text-muted hover:text-danger"
               onClick={() => edit(cols.filter((x) => x.id !== c.id))}
-              aria-label={`Supprimer ${c.title}`}
+              aria-label={t("remove", { name: c.title })}
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-4" />
             </button>
           </li>
         ))}
       </ol>
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
-          className={button}
-          disabled={cols.length >= 12}
+          variant="secondary"
+          isDisabled={cols.length >= 12}
           onClick={() =>
             edit([
               ...cols,
@@ -405,43 +510,44 @@ function ColumnsSection({ project }: { project: FactoryProject }) {
                   "nouvelle",
                   cols.map((c) => c.id),
                 ),
-                title: "Nouvelle colonne",
+                title: t("newColumn"),
                 hint: "",
                 states: [],
                 nodes: [],
               },
             ])
           }
-          data-testid="column-add"
+          testId="column-add"
         >
-          + Colonne
-        </button>
-        <button
+          {t("addColumn")}
+        </Button>
+        <Button
           type="button"
-          className={button}
+          variant="tertiary"
           onClick={() => persist(undefined)}
-          disabled={save.isPending || !saved?.length}
-          title="Revenir aux colonnes par état"
+          isDisabled={save.isPending || !saved?.length}
         >
-          Colonnes par défaut
-        </button>
-        <button
+          {t("defaultColumns")}
+        </Button>
+        <span className="flex-1" />
+        <Button
           type="button"
-          className={cn(primary, "ml-auto")}
-          disabled={
+          variant="primary"
+          isDisabled={
             !dirty || save.isPending || cols.some((c) => !c.title.trim())
           }
           onClick={() => persist(cols)}
-          data-testid="columns-save"
+          testId="columns-save"
         >
-          Enregistrer les colonnes
-        </button>
+          {t("saveColumns")}
+        </Button>
       </div>
     </Section>
   );
 }
 
 function NotificationsSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
   const save = useSaveProjectSettings();
   const { data: status } = useFactoryStatus();
   const events = project.settings?.notify.events ?? [
@@ -458,140 +564,145 @@ function NotificationsSection({ project }: { project: FactoryProject }) {
     save.mutate(
       {
         projectId: project.id,
-        settings: {
-          ...(project.settings ?? {}),
-          notify: { events: next },
-        },
+        settings: settingsWith(project, {
+          notify: { ...project.settings?.notify, events: next },
+        }),
       },
-      { onError: (e) => toast.error((e as Error).message) },
+      { onError: reportFactoryError },
     );
   };
+  const topicEnv = project.settings?.notify.topicEnv;
   return (
     <Section
-      title="Notifications"
-      hint="Navigateur : tant qu'un onglet Canvas est ouvert (tous projets). Push ntfy : même onglet fermé, envoyé par l'orchestrateur."
+      title={t("notificationsSection")}
+      description={t("notificationsHint")}
       testId="project-notifications"
     >
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="text-muted">Navigateur (cet appareil) :</span>
-        {notificationsSupported() ? (
-          <button
-            type="button"
-            className={button}
-            onClick={async () => {
-              if (notifyOn) setNotify(false);
-              else if (!(await enableBrowserNotifications()))
-                toast.error("Notifications refusées par le navigateur.");
-            }}
-          >
-            {notifyOn ? "Activées (désactiver)" : "Activer"}
-          </button>
-        ) : (
-          <span className="text-muted">non supportées</span>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="text-muted">
-          Push ntfy{" "}
-          {status?.push ? "(configuré)" : "(non configuré : FACTORY_NTFY_URL)"}{" "}
-          :
+      {notificationsSupported() && (
+        <Switch
+          testId="browser-notify"
+          isToggled={notifyOn}
+          onToggle={async (on) => {
+            if (!on) setNotify(false);
+            else if (!(await enableBrowserNotifications()))
+              reportFactoryError(t("notifyDenied"));
+          }}
+        >
+          {t("browserThisDevice")}
+        </Switch>
+      )}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm text-content">
+          {t("pushEvents")} ·{" "}
+          <span className="text-muted">
+            {topicEnv
+              ? t("pushTopic", { env: topicEnv })
+              : t("pushGlobalTopic")}
+          </span>
+          {!status?.push && !topicEnv && (
+            <span className="text-muted"> ({t("pushOff")})</span>
+          )}
         </span>
-        {NOTIFY_KINDS.map((k) => (
-          <label key={k} className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={events.includes(k)}
-              disabled={save.isPending}
-              onChange={() => toggle(k)}
-              data-testid={`notify-${k}`}
-            />
-            {NOTIFY_LABEL[k]}
-          </label>
-        ))}
+        <div className="flex flex-wrap gap-4 text-sm">
+          {NOTIFY_KINDS.map((k) => (
+            <label key={k} className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={events.includes(k)}
+                disabled={save.isPending}
+                onChange={() => toggle(k)}
+                data-testid={`notify-${k}`}
+              />
+              {t(`notify${k}` as FactoryKey)}
+            </label>
+          ))}
+        </div>
       </div>
     </Section>
   );
 }
 
 function ConfigSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
+  const { data: status } = useFactoryStatus();
+  const sub = status?.subscriptions.find((s) => s.id === project.subscription);
   const c = project.config;
+  const rows: [string, React.ReactNode][] = [
+    [
+      t("repo"),
+      project.repo ? (
+        <a
+          href={`https://github.com/${project.repo}`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2"
+        >
+          {project.repo}
+        </a>
+      ) : (
+        "—"
+      ),
+    ],
+    [t("subscription"), sub ? sub.label : (project.subscription ?? "—")],
+  ];
+  if (c) {
+    rows.push([
+      t("branch"),
+      <span key="branch" className="font-mono">
+        {c.defaultBranch}
+      </span>,
+    ]);
+    rows.push([t("parallel"), String(c.concurrency)]);
+    rows.push([t("githubProject"), c.githubProject ? t("tracked") : t("no")]);
+  }
+  rows.push([
+    t("commands"),
+    <span key="commands" className="font-mono">
+      {project.commands.join(", ") || "—"}
+    </span>,
+  ]);
   return (
     <Section
-      title="Configuration versionnée"
-      hint={`Lecture seule : config/projects/${project.id}.yaml dans software-factory (PR pour la modifier).`}
+      title={t("configSection")}
+      description={t("configHint", { id: project.id })}
     >
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs">
-        <dt className="text-muted">Dépôt</dt>
-        <dd>
-          <a
-            href={`https://github.com/${project.repo}`}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            {project.repo}
-          </a>
-        </dd>
-        <dt className="text-muted">Actif</dt>
-        <dd>{project.active ? "oui" : "non (aucun run lancé)"}</dd>
-        {c && (
-          <>
-            <dt className="text-muted">Branche</dt>
-            <dd className="font-mono">{c.defaultBranch}</dd>
-            <dt className="text-muted">Agents en parallèle</dt>
-            <dd>{c.concurrency}</dd>
-            <dt className="text-muted">GitHub Project</dt>
-            <dd>{c.githubProject ? "suivi" : "non"}</dd>
-          </>
-        )}
-        <dt className="text-muted">Commandes</dt>
-        <dd className="font-mono">{project.commands.join(", ") || "—"}</dd>
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">
+        {rows.map(([k, v]) => (
+          <React.Fragment key={k}>
+            <dt className="text-muted">{k}</dt>
+            <dd className="text-content">{v}</dd>
+          </React.Fragment>
+        ))}
       </dl>
     </Section>
   );
 }
 
-/** Per-project factory configuration, for the project picked in the sidebar. */
 export default function FactoryProjectPage() {
-  const { project, projects, setProjectId } = useSelectedProject();
+  const t = useFactoryT();
+  const { project } = useSelectedProject();
   return (
-    <div
-      className="flex h-full flex-col gap-3 overflow-y-auto p-4"
-      data-testid="factory-project-page"
+    <FactoryPage
+      title={project ? project.name : t("projectTitle")}
+      badge={
+        project && (
+          <span className="font-mono text-sm text-muted">{project.id}</span>
+        )
+      }
+      width="narrow"
+      testId="factory-project-page"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-lg font-semibold">Projet</h1>
-        <select
-          className={input}
-          value={project?.id ?? ""}
-          onChange={(e) => setProjectId(e.target.value)}
-          data-testid="project-page-selector"
-        >
-          <option value="">Choisir un projet…</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.id} ({p.repo})
-            </option>
-          ))}
-        </select>
-        <span className="text-xs text-muted">
-          (même choix que le sélecteur de la barre latérale)
-        </span>
-      </div>
-      {!project && (
-        <p className="text-sm text-muted">
-          Choisis un projet pour configurer ses workflows, ses colonnes et ses
-          notifications.
-        </p>
-      )}
-      {project && (
-        <div className="grid max-w-5xl grid-cols-1 gap-3">
+      {!project ? (
+        <StateMessage kind="empty">{t("chooseProject")}</StateMessage>
+      ) : (
+        <>
+          <StateSection project={project} />
           <WorkflowsSection project={project} />
           <ColumnsSection key={project.id} project={project} />
           <NotificationsSection project={project} />
           <ConfigSection project={project} />
-        </div>
+        </>
       )}
-    </div>
+    </FactoryPage>
   );
 }

@@ -1,36 +1,36 @@
-/* eslint-disable i18next/no-literal-string -- factory UI is French-only */
-import { formatDuration } from "../format";
 import React from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { AlertTriangle, Repeat, RotateCcw, Timer, XCircle } from "lucide-react";
 import { cn } from "#/utils/utils";
+import { formatDuration } from "../format";
+import { useFactoryT } from "../i18n";
 import type { WorkflowFlowNode } from "./graph";
 import { NODE_HEIGHT, NODE_WIDTH } from "./graph";
-import { TYPE_COLOR, nodeSummary } from "./defaults";
-
-const TYPE_LABEL: Record<string, string> = {
-  trigger: "Déclencheur",
-  agent: "Agent",
-  check: "Vérification",
-  command: "Commande",
-  human: "Validation humaine",
-  router: "Routeur",
-  git: "Git / GitHub",
-  wait: "Attente",
-  note: "Note",
-  end: "Fin",
-};
+import { TYPE_COLOR, TYPE_LABEL, nodeSummary } from "./defaults";
 
 function WorkflowNodeView({ data, selected }: NodeProps<WorkflowFlowNode>) {
+  const t = useFactoryT();
   const { node, ports, optional, problems, runs, stats } = data;
   const color = TYPE_COLOR[node.type];
   const hasInput = node.type !== "trigger";
+  const statsTitle = stats
+    ? t("wfNodeStatsTitle", {
+        entries: stats.entries,
+        runs: stats.runs,
+        median: formatDuration(t, stats.medianSeconds),
+        avg: formatDuration(t, stats.avgSeconds),
+        max: formatDuration(t, stats.maxSeconds),
+        loops: stats.loops,
+        failed: stats.failedHere,
+      })
+    : t("wfNoPassage");
   return (
     <div
       data-testid={`wf-node-${node.id}`}
       className={cn(
-        "rounded-lg border bg-surface text-foreground shadow-sm",
-        selected ? "border-contrast" : "border-border",
-        problems.length > 0 && "border-status-error",
+        "rounded-lg border bg-base-secondary text-content shadow-sm",
+        selected ? "border-primary ring-1 ring-primary" : "border-border",
+        problems.length > 0 && "border-danger",
       )}
       style={{
         width: NODE_WIDTH,
@@ -48,62 +48,72 @@ function WorkflowNodeView({ data, selected }: NodeProps<WorkflowFlowNode>) {
         />
       )}
       <div className="flex items-center justify-between gap-2 px-3 pt-2">
-        <span className="text-3xs uppercase tracking-wide text-muted">
-          {TYPE_LABEL[node.type]}
+        <span className="text-xs tracking-wide text-muted uppercase">
+          {t(TYPE_LABEL[node.type])}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1.5 text-xs">
           {runs > 0 && (
             <span
-              className="rounded-full bg-contrast px-1.5 text-3xs text-contrast-foreground"
-              title={`${runs} run(s) sur ce nœud`}
+              className="rounded-full bg-primary px-1.5 text-on-primary"
+              title={t("wfRunsOnNode", { n: runs })}
             >
               {runs}
             </span>
           )}
           {node.maxVisits ? (
-            <span className="text-3xs text-muted" title="Passages maximum">
-              ↻{node.maxVisits}
+            <span
+              className="inline-flex items-center gap-0.5 text-muted"
+              title={t("wfMaxVisits")}
+            >
+              <Repeat className="size-3" aria-hidden />
+              {node.maxVisits}
             </span>
           ) : null}
           {problems.length > 0 && (
             <span
-              className="text-3xs text-status-error"
+              className="inline-flex items-center gap-0.5 text-danger"
               title={problems.join("\n")}
             >
-              ⚠ {problems.length}
+              <AlertTriangle className="size-3" aria-hidden />
+              {problems.length}
             </span>
           )}
         </span>
       </div>
-      <div className="px-3 text-sm font-semibold truncate">
+      <div className="truncate px-3 text-sm font-medium">
         {node.label || node.id}
       </div>
-      <div className="px-3 pb-2 text-xs text-muted line-clamp-2">
-        {nodeSummary(node)}
+      <div className="line-clamp-2 px-3 pb-2 text-xs text-muted">
+        {nodeSummary(node, t)}
       </div>
       {stats !== undefined && (
         <div
-          className="flex flex-wrap gap-x-2 border-t border-border px-3 py-1 text-2xs text-muted"
+          className="flex flex-wrap items-center gap-x-2 border-t border-border px-3 py-1 text-xs text-muted"
           data-testid={`wf-node-stats-${node.id}`}
-          title={
-            stats
-              ? `${stats.entries} passage(s) sur ${stats.runs} run(s)\nmédiane ${formatDuration(stats.medianSeconds)}, moyenne ${formatDuration(stats.avgSeconds)}, max ${formatDuration(stats.maxSeconds)}\n${stats.loops} retour(s) en arrière, ${stats.failedHere} échec(s) ici`
-              : "Aucun passage enregistré"
-          }
+          title={statsTitle}
         >
           {stats ? (
             <>
-              <span>⏱ {formatDuration(stats.medianSeconds)}</span>
+              <span className="inline-flex items-center gap-0.5">
+                <Timer className="size-3" aria-hidden />
+                {formatDuration(t, stats.medianSeconds)}
+              </span>
               <span>×{stats.entries}</span>
               {stats.loops > 0 && (
-                <span className="text-feedback-warning">↺{stats.loops}</span>
+                <span className="inline-flex items-center gap-0.5 text-warning">
+                  <RotateCcw className="size-3" aria-hidden />
+                  {stats.loops}
+                </span>
               )}
               {stats.failedHere > 0 && (
-                <span className="text-status-error">✗{stats.failedHere}</span>
+                <span className="inline-flex items-center gap-0.5 text-danger">
+                  <XCircle className="size-3" aria-hidden />
+                  {stats.failedHere}
+                </span>
               )}
             </>
           ) : (
-            <span>aucun passage</span>
+            <span>{t("wfNoPassage")}</span>
           )}
         </div>
       )}
@@ -112,14 +122,15 @@ function WorkflowNodeView({ data, selected }: NodeProps<WorkflowFlowNode>) {
           {ports.map((p) => (
             <div
               key={p}
-              className="relative pr-4 text-right text-2xs text-muted"
+              className="relative pr-4 text-right text-xs text-muted"
             >
               {p}
-              {optional.includes(p) ? " (opt.)" : ""}
+              {optional.includes(p) ? ` ${t("wfOptionalPort")}` : ""}
               <Handle
                 type="source"
                 position={Position.Right}
                 id={p}
+                // eslint-disable-next-line shadcn/no-inline-styles -- type colour
                 style={{ background: color, top: "50%" }}
               />
             </div>

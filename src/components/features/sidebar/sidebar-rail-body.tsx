@@ -6,9 +6,6 @@ import {
   Plus,
   Server,
   Settings,
-  Workflow, // factory:
-  Kanban, // factory:
-  FolderCog, // factory:
 } from "lucide-react";
 import { OpenHandsLogoButton } from "#/components/shared/buttons/openhands-logo-button";
 import { NavigationLink } from "#/components/shared/navigation-link";
@@ -24,8 +21,7 @@ import {
 } from "#/hooks/use-pinned-home-route";
 import { SidebarCollapsedIconSlot } from "./sidebar-collapsed-icon-slot";
 import { SidebarNavLink } from "./sidebar-nav-link";
-import { FactoryProjectSelector } from "#/factory/project-context"; // factory:
-import { FactoryNotifier } from "#/factory/notifier"; // factory:
+import { FactorySidebarSection } from "#/factory/sidebar-section"; // factory:
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
 import { StyledTooltip } from "#/components/shared/buttons/styled-tooltip";
@@ -255,32 +251,8 @@ export function SidebarRailBody({
             </svg>
           }
         />
-        {/* factory: tickets dashboard */}
-        <SidebarNavLink
-          to="/tickets"
-          label="Tickets" // eslint-disable-line i18next/no-literal-string -- factory UI
-          testId="sidebar-factory-tickets-link"
-          collapsed={collapsed}
-          icon={<Kanban width={ICON_SIZE} height={ICON_SIZE} />}
-        />
-        {/* factory: workflow node editor */}
-        <SidebarNavLink
-          to="/workflows"
-          label="Workflows" // eslint-disable-line i18next/no-literal-string -- factory UI
-          testId="sidebar-factory-workflows-link"
-          collapsed={collapsed}
-          icon={<Workflow width={ICON_SIZE} height={ICON_SIZE} />}
-        />
-        {/* factory: per-project settings, global project picker, notifications */}
-        <SidebarNavLink
-          to="/factory-project"
-          label="Projet" // eslint-disable-line i18next/no-literal-string -- factory UI
-          testId="sidebar-factory-project-link"
-          collapsed={collapsed}
-          icon={<FolderCog width={ICON_SIZE} height={ICON_SIZE} />}
-        />
-        <FactoryProjectSelector collapsed={collapsed} />
-        <FactoryNotifier />
+        {/* factory: active project, Tickets / Workflows / Project, notifications */}
+        <FactorySidebarSection collapsed={collapsed} />
         {/* The interface manifest owns this entry's label, so an absent
             manifest leaves the rail without it rather than with host copy. */}
         {hasAutomationInterface() && (

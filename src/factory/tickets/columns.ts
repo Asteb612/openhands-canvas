@@ -1,58 +1,48 @@
-import type { BoardColumn, FactoryRun } from "../workflows/api";
+import type { BoardColumn, FactoryRun } from "../api";
+import type { FactoryKey } from "../i18n";
+import { TERMINAL_STATES } from "../states";
 
-export const RUN_STATES = [
-  "QUEUED",
-  "BLOCKED",
-  "ACTIVE",
-  "HUMAN",
-  "WAITING",
-  "COMPLETED",
-  "FAILED",
-  "CANCELLED",
-] as const;
+export { RUN_STATES, TERMINAL_STATES } from "../states";
 
-export const TERMINAL_STATES = ["COMPLETED", "FAILED", "CANCELLED"];
+type T = (key: FactoryKey) => string;
 
 /** Default board: by run state, what needs the owner first. */
-export const DEFAULT_COLUMNS: BoardColumn[] = [
-  {
-    id: "human",
-    title: "À valider",
-    hint: "une décision t'attend",
-    states: ["HUMAN"],
-  },
-  {
-    id: "active",
-    title: "En cours",
-    hint: "l'agent travaille ou attend un évènement",
-    states: ["ACTIVE", "WAITING"],
-  },
-  {
-    id: "queued",
-    title: "En file",
-    hint: "pas encore pris en charge",
-    states: ["QUEUED", "BLOCKED"],
-  },
-  {
-    id: "failed",
-    title: "Échec",
-    hint: "à relancer ou abandonner",
-    states: ["FAILED"],
-  },
-  {
-    id: "done",
-    title: "Terminés",
-    hint: "terminés ou annulés",
-    states: ["COMPLETED", "CANCELLED"],
-  },
-];
+export function defaultColumns(t: T): BoardColumn[] {
+  return [
+    {
+      id: "human",
+      title: t("colHuman"),
+      hint: t("colHumanHint"),
+      states: ["HUMAN"],
+    },
+    {
+      id: "active",
+      title: t("colActive"),
+      hint: t("colActiveHint"),
+      states: ["ACTIVE", "WAITING"],
+    },
+    {
+      id: "queued",
+      title: t("colQueued"),
+      hint: t("colQueuedHint"),
+      states: ["QUEUED", "BLOCKED"],
+    },
+    {
+      id: "failed",
+      title: t("colFailed"),
+      hint: t("colFailedHint"),
+      states: ["FAILED"],
+    },
+    {
+      id: "done",
+      title: t("colDone"),
+      hint: t("colDoneHint"),
+      states: ["COMPLETED", "CANCELLED"],
+    },
+  ];
+}
 
-/** Catch-all column for runs no custom column matches. */
-export const OTHER_COLUMN: BoardColumn = {
-  id: "__other",
-  title: "Autres",
-  hint: "aucune colonne ne correspond",
-};
+export const OTHER_COLUMN_ID = "__other";
 
 export function columnMatches(c: BoardColumn, r: FactoryRun): boolean {
   if (c.states?.length && !c.states.includes(r.state)) return false;
@@ -79,7 +69,8 @@ export function isHistoryColumn(c: BoardColumn): boolean {
 export function groupRuns(
   runs: FactoryRun[],
   filter: { project?: string; text?: string; workflow?: string },
-  columns: BoardColumn[] = DEFAULT_COLUMNS,
+  columns: BoardColumn[],
+  other: Omit<BoardColumn, "id"> = { title: "Other" },
 ): { columns: BoardColumn[]; groups: Record<string, FactoryRun[]> } {
   const q = (filter.text ?? "").trim().toLowerCase();
   const kept = runs.filter(
@@ -94,14 +85,16 @@ export function groupRuns(
   const groups: Record<string, FactoryRun[]> = Object.fromEntries(
     columns.map((c) => [c.id, []]),
   );
-  const other: FactoryRun[] = [];
+  const leftovers: FactoryRun[] = [];
   for (const r of kept) {
     const c = columns.find((col) => columnMatches(col, r));
     if (c) groups[c.id]!.push(r);
-    else other.push(r);
+    else leftovers.push(r);
   }
-  const cols = other.length ? [...columns, OTHER_COLUMN] : columns;
-  if (other.length) groups[OTHER_COLUMN.id] = other;
+  const cols = leftovers.length
+    ? [...columns, { ...other, id: OTHER_COLUMN_ID }]
+    : columns;
+  if (leftovers.length) groups[OTHER_COLUMN_ID] = leftovers;
   for (const c of cols) {
     const history = isHistoryColumn(c);
     groups[c.id]!.sort((a, b) => {

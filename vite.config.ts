@@ -119,6 +119,8 @@ export default defineConfig(({ mode }) => {
     VITE_VSCODE_TARGET,
     // factory: local orchestrator for the workflow pages (software-factory/dev).
     VITE_FACTORY_API_TARGET,
+    // factory: the dev command-center proxy serving /agents/<project> (software-factory/dev).
+    VITE_FACTORY_AGENTS_TARGET,
   } = loadEnv(mode, process.cwd());
 
   const isLibraryBuild = process.env.BUILD_LIB === "true";
@@ -446,6 +448,17 @@ export default defineConfig(({ mode }) => {
                 changeOrigin: true,
                 rewrite: (p: string) => p.replace(/^\/factory-api/, "/api"),
                 headers: { "Remote-User": "dev" },
+              },
+            }
+          : {}),
+        // factory: /agents/<project>/* -> the dev proxy, which strips the prefix and
+        // adds that project's session key (dev only).
+        ...(VITE_FACTORY_AGENTS_TARGET
+          ? {
+              "/agents": {
+                target: VITE_FACTORY_AGENTS_TARGET,
+                changeOrigin: true,
+                ws: true,
               },
             }
           : {}),

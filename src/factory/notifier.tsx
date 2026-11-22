@@ -1,7 +1,10 @@
 import React from "react";
 import { create } from "zustand";
 import { useNavigation } from "#/context/navigation-context";
-import { useFactoryStatus, useRuns, type FactoryRun } from "./workflows/api";
+import { useFactoryStatus, useRuns, type FactoryRun } from "./api";
+import { factoryT, useFactoryLocale } from "./i18n";
+import { conversationPath } from "./project-context";
+import { useTranslation } from "react-i18next";
 
 const PREF_KEY = "factory.browserNotifications";
 
@@ -50,7 +53,8 @@ export interface RunAlert {
   key: string;
   title: string;
   body: string;
-  conversationId: string | null;
+  /** Where a click goes: the conversation on its project's backend, or the tickets. */
+  to: string;
 }
 
 /**
@@ -60,25 +64,30 @@ export interface RunAlert {
 export function diffAlerts(
   previous: Map<number, string> | null,
   runs: FactoryRun[],
+  lang?: string,
 ): RunAlert[] {
   if (!previous) return [];
   const out: RunAlert[] = [];
   for (const r of runs) {
     const before = previous.get(r.id);
     if (before === r.state) continue;
+    const to = r.conversationId
+      ? conversationPath(r.project, r.conversationId)
+      : `/factory/tickets?run=${r.id}`;
+    const head = `[${r.project}] #${r.issue}`;
     if (r.state === "HUMAN")
       out.push({
         key: `run-${r.id}-human-${r.node ?? ""}`,
-        title: `🏭 #${r.issue} à valider`,
+        title: `${head} ${factoryT(lang, "stateHUMAN")}`,
         body: `${r.title}${r.nodeLabel ? ` · ${r.nodeLabel}` : ""}`,
-        conversationId: r.conversationId,
+        to,
       });
     if (r.state === "FAILED")
       out.push({
         key: `run-${r.id}-failed`,
-        title: `🏭 #${r.issue} en échec`,
+        title: `${head} ${factoryT(lang, "stateFAILED")}`,
         body: `${r.title}${r.failureMessage ? ` · ${r.failureMessage.slice(0, 140)}` : ""}`,
-        conversationId: r.conversationId,
+        to,
       });
   }
   return out;
@@ -95,7 +104,11 @@ export function FactoryNotifier() {
   const { data: status } = useFactoryStatus();
   const { navigate } = useNavigation();
   const seen = React.useRef<Map<number, string> | null>(null);
-  const lastQuota = React.useRef<string | null | undefined>(undefined);
+  const lastQuota = React.useRef<Record<string, string | null> | undefined>(
+    undefined,
+  );
+  const { i18n } = useTranslation();
+  const locale = useFactoryLocale();
 
   const show = React.useCallback(
     (title: string, body: string, tag: string, to: string) => {
@@ -117,32 +130,39 @@ export function FactoryNotifier() {
 
   React.useEffect(() => {
     if (!runs) return;
-    for (const a of diffAlerts(seen.current, runs))
-      show(
-        a.title,
-        a.body,
-        a.key,
-        a.conversationId ? `/conversations/${a.conversationId}` : "/tickets",
-      );
+    for (const a of diffAlerts(seen.current, runs, i18n?.language))
+      show(a.title, a.body, a.key, a.to);
     seen.current = new Map(runs.map((r) => [r.id, r.state]));
   }, [runs, show]);
 
   React.useEffect(() => {
     if (!status) return;
-    const at = status.quota.last?.at ?? null;
-    if (lastQuota.current !== undefined && at && at !== lastQuota.current) {
-      const until = status.quota.last?.until;
-      show(
-        "🏭 Quota de l'abonnement atteint",
-        until
-          ? `Reprise vers ${new Date(until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
-          : "Les runs reprendront après le reset.",
-        "factory-quota",
-        "/tickets",
-      );
+    const now = Object.fromEntries(
+      status.subscriptions.map((sub) => [sub.id, sub.last?.at ?? null]),
+    );
+    if (lastQuota.current !== undefined) {
+      for (const sub of status.subscriptions) {
+        const at = now[sub.id];
+        if (at && at !== lastQuota.current[sub.id] && sub.suspendedUntil) {
+          const time = new Date(sub.suspendedUntil).toLocaleTimeString(locale, {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          show(
+            factoryT(i18n?.language, "notifyquota"),
+            factoryT(i18n?.language, "quotaHit", {
+              label: sub.label,
+              time,
+              projects: sub.projects.join(", "),
+            }),
+            `factory-quota-${sub.id}`,
+            "/factory/tickets",
+          );
+        }
+      }
     }
-    lastQuota.current = at;
-  }, [status, show]);
+    lastQuota.current = now;
+  }, [status, show, locale, i18n?.language]);
 
   return null;
 }
