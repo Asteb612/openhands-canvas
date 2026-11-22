@@ -11,6 +11,7 @@ import {
   type FactoryProject,
   type WorkflowSummary,
 } from "./workflows/api";
+import { useSelectedProject } from "./project-context";
 
 /** A factory task type: which project, which workflow. `null` = plain chat. */
 export interface FactoryTaskChoice {
@@ -31,10 +32,13 @@ export interface FactoryTaskOptions {
 export function useFactoryTaskOptions(): FactoryTaskOptions[] {
   const { data: projects } = useProjects();
   const { data: workflows } = useWorkflows();
+  const { projectId } = useSelectedProject();
   return React.useMemo(() => {
     if (!projects || !workflows) return [];
-    // Inactive projects are listed greyed out (nothing would run there).
+    // Inactive projects are listed greyed out (nothing would run there); the project
+    // picked in the sidebar narrows the list to itself.
     return [...projects]
+      .filter((p) => !projectId || p.id === projectId)
       .sort((a, b) => Number(b.active) - Number(a.active))
       .map((project) => {
         const enabled = project.enabledWorkflows.length
@@ -49,7 +53,7 @@ export function useFactoryTaskOptions(): FactoryTaskOptions[] {
         return { project, workflows: sorted };
       })
       .filter((o) => o.workflows.length > 0);
-  }, [projects, workflows]);
+  }, [projects, workflows, projectId]);
 }
 
 /** First line = issue title (shortened), the whole text = issue body. */

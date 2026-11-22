@@ -1,6 +1,7 @@
 import dagre from "@dagrejs/dagre";
 import type { Edge as FlowEdge, Node as FlowNode } from "@xyflow/react";
 import type {
+  NodeStats,
   Problem,
   ValidationResponse,
   WorkflowDefinition,
@@ -18,6 +19,8 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   problems: string[];
   /** Number of runs currently on this node (run overlay). */
   runs: number;
+  /** Statistics from past runs (editor "Statistiques" overlay). */
+  stats?: NodeStats | null;
   readOnly: boolean;
 }
 
@@ -95,6 +98,7 @@ export function toFlow(
     ports?: ValidationResponse["ports"];
     problems?: Problem[];
     runsByNode?: Map<string, number>;
+    statsByNode?: Map<string, NodeStats>;
     readOnly: boolean;
     /** Rendered sizes (React Flow measurements) for exact routing. */
     sizes?: Record<string, { width: number; height: number }>;
@@ -116,6 +120,9 @@ export function toFlow(
         optional: p.optional,
         problems: probs.get(n.id) ?? [],
         runs: opts.runsByNode?.get(n.id) ?? 0,
+        ...(opts.statsByNode
+          ? { stats: opts.statsByNode.get(n.id) ?? null }
+          : {}),
         readOnly: opts.readOnly,
       },
     };

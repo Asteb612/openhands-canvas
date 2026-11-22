@@ -26,6 +26,7 @@ export default [
     // factory: workflow node editor (software-factory orchestrator API)
     route("workflows", "factory/workflows/workflows-page.tsx"),
     route("tickets", "factory/tickets/tickets-page.tsx"),
+    route("factory-project", "factory/project-page.tsx"),
     route("settings", "routes/settings.tsx", [
       index("routes/settings-index.tsx"),
       route("llm", "routes/llm-settings.tsx"),

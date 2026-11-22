@@ -1,4 +1,7 @@
 /* eslint-disable i18next/no-literal-string -- factory UI is French-only */
+import { useSelectedProject } from "../project-context";
+import { runStateOf } from "../run-status";
+import { formatDuration } from "../format";
 import React from "react";
 import {
   Background,
@@ -30,6 +33,7 @@ import {
   useRuns,
   useSaveWorkflow,
   useSetProjectWorkflows,
+  useWorkflowStats,
   useStartRun,
   useWorkflow,
   useWorkflows,
@@ -394,7 +398,21 @@ function Editor({
     });
   }, [data, latestVersion]);
 
-  const projectId = projects?.[0]?.id;
+  // The project picked in the sidebar (else the first): validation and statistics.
+  const { projectId: selectedProject } = useSelectedProject();
+  const projectId = selectedProject || projects?.[0]?.id;
+  const [showStats, setShowStats] = React.useState(false);
+  const { data: stats } = useWorkflowStats(
+    showStats ? workflowId : null,
+    selectedProject || undefined,
+  );
+  const statsByNode = React.useMemo(
+    () =>
+      showStats && stats
+        ? new Map(stats.nodes.map((n) => [n.node, n]))
+        : undefined,
+    [showStats, stats],
+  );
   const commands = projects?.[0]?.commands ?? [];
   const builtin = !!data?.workflow.builtin;
   const oldVersion = viewVersion !== null && viewVersion !== baseVersion;
@@ -435,6 +453,7 @@ function Editor({
       ports: validation?.ports,
       problems: validation?.problems,
       runsByNode,
+      statsByNode,
       sizes: measured,
       readOnly,
     });
@@ -450,6 +469,7 @@ function Editor({
     def,
     validation,
     runsByNode,
+    statsByNode,
     readOnly,
     selectedNode,
     selectedEdge,
@@ -649,6 +669,15 @@ function Editor({
             <span className="text-xs text-feedback-warning">modifié</span>
           )}
           <div className="ml-auto flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              className={cn(button, showStats && "border-contrast")}
+              onClick={() => setShowStats((v) => !v)}
+              aria-pressed={showStats}
+              data-testid="wf-stats-toggle"
+            >
+              Statistiques
+            </button>
             {!readOnly && (
               <button
                 type="button"
@@ -697,6 +726,27 @@ function Editor({
             )}
           </div>
         </div>
+        {showStats && stats && (
+          <div
+            className="flex flex-wrap gap-x-4 border-b border-border px-3 py-1 text-xs text-muted"
+            data-testid="wf-stats-summary"
+          >
+            <span>
+              {stats.runs} run(s)
+              {selectedProject ? ` sur ${selectedProject}` : ", tous projets"}
+            </span>
+            {Object.entries(stats.byState).map(([st, n]) => (
+              <span key={st}>
+                {runStateOf(st).label} : {n}
+              </span>
+            ))}
+            <span>
+              médiane d’un run terminé :{" "}
+              {formatDuration(stats.medianCompletedSeconds)}
+            </span>
+            <span>⏱ médiane par étape · ×passages · ↺retours · ✗échecs</span>
+          </div>
+        )}
         {(message || globalProblems.length > 0) && (
           <div className="border-b border-border px-3 py-1 text-xs">
             {message && (

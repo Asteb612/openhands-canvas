@@ -97,6 +97,26 @@ export interface NodeTypesResponse {
   conditionFields: readonly string[];
 }
 
+export const NOTIFY_KINDS = ["human", "failed", "quota", "completed"] as const;
+export type NotifyKind = (typeof NOTIFY_KINDS)[number];
+
+/** Dashboard column: a run goes to the first column whose filters all match. */
+export interface BoardColumn {
+  id: string;
+  title: string;
+  hint?: string;
+  /** Run states (empty = any). */
+  states?: string[];
+  /** "workflowId/nodeId" or "*\/nodeId" (empty = any). */
+  nodes?: string[];
+  nodeTypes?: string[];
+}
+
+export interface ProjectSettings {
+  notify: { events: NotifyKind[] };
+  columns?: BoardColumn[];
+}
+
 export interface FactoryProject {
   id: string;
   repo: string;
@@ -104,6 +124,77 @@ export interface FactoryProject {
   defaultWorkflow: string | null;
   enabledWorkflows: string[];
   commands: string[];
+  settings?: ProjectSettings;
+  config?: {
+    defaultBranch: string;
+    concurrency: number;
+    labels: Record<string, unknown>;
+    githubProject: boolean;
+  };
+}
+
+export interface FactoryStatus {
+  control: {
+    paused: boolean;
+    by: string | null;
+    at: string | null;
+    reason: string;
+  };
+  quota: {
+    suspended: {
+      runId: number;
+      project: string;
+      issue: number;
+      until: string;
+    }[];
+    last: { at: string; message: string; until: string | null } | null;
+  };
+  push: boolean;
+  capacity: { global: number | null; active: number };
+}
+
+export interface ReviewData {
+  run: {
+    id: number;
+    issue: number;
+    title: string;
+    prNumber: number | null;
+    conversationId: string | null;
+    workflow: string;
+  };
+  node: {
+    id: string;
+    label: string;
+    title: string;
+    what: string;
+    instructions: string;
+    outcomes: {
+      id: string;
+      label: string;
+      kind: string;
+      requireComment: boolean;
+    }[];
+  };
+  files: { path: string; content: string | null; truncated: boolean }[];
+}
+
+export interface NodeStats {
+  node: string;
+  entries: number;
+  runs: number;
+  medianSeconds: number | null;
+  avgSeconds: number | null;
+  maxSeconds: number | null;
+  loops: number;
+  failedHere: number;
+  activeHere: number;
+}
+
+export interface WorkflowStats {
+  runs: number;
+  byState: Record<string, number>;
+  medianCompletedSeconds: number | null;
+  nodes: NodeStats[];
 }
 
 export interface FactoryRun {
@@ -376,5 +467,74 @@ export function useCreateTicket() {
       }),
     onSuccess: invalidate,
     meta: { disableToast: true },
+  });
+}
+
+export function useFactoryStatus() {
+  return useQuery({
+    queryKey: [...KEY, "status"],
+    queryFn: () => factoryFetch<FactoryStatus>("/status"),
+    refetchInterval: 30_000,
+    retry: false,
+    meta: { disableToast: true },
+  });
+}
+
+export function useSetControl() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (v: { paused: boolean; reason?: string }) =>
+      factoryFetch<{ control: FactoryStatus["control"] }>("/control", {
+        method: "PUT",
+        body: v,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReview(runId: number | null) {
+  return useQuery({
+    queryKey: [...KEY, "review", runId],
+    queryFn: () => factoryFetch<ReviewData>(`/runs/${runId}/review`),
+    enabled: runId !== null,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useDecide() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (v: { runId: number; outcome: string; comment: string }) =>
+      factoryFetch<{ ok: true; via: string }>(`/runs/${v.runId}/decide`, {
+        method: "POST",
+        body: { outcome: v.outcome, comment: v.comment },
+      }),
+    onSuccess: invalidate,
+    meta: { disableToast: true },
+  });
+}
+
+export function useWorkflowStats(id: string | null, project?: string) {
+  return useQuery({
+    queryKey: [...KEY, "stats", id, project ?? ""],
+    queryFn: () =>
+      factoryFetch<{ stats: WorkflowStats }>(
+        `/workflows/${encodeURIComponent(id!)}/stats${project ? `?project=${encodeURIComponent(project)}` : ""}`,
+      ).then((r) => r.stats),
+    enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useSaveProjectSettings() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (v: { projectId: string; settings: ProjectSettings }) =>
+      factoryFetch<{ ok: true; settings: ProjectSettings }>(
+        `/projects/${encodeURIComponent(v.projectId)}/settings`,
+        { method: "PUT", body: { settings: v.settings } },
+      ),
+    onSuccess: invalidate,
   });
 }

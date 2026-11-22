@@ -6,53 +6,19 @@ import { cn } from "#/utils/utils";
 import { RunStateChip } from "../run-status";
 import {
   useCreateTicket,
-  useProjects,
   useRuns,
   useStartRun,
   type FactoryRun,
 } from "../workflows/api";
 import { splitTask, useFactoryTaskOptions } from "../task-type";
+import { useSelectedProject } from "../project-context";
+import { DEFAULT_COLUMNS, groupRuns, isHistoryColumn } from "./columns";
+import { ReviewPanel } from "./review-panel";
+import { FactoryStatusBar } from "./status-bar";
 
-/** Board columns: what needs me first, then what moves, then the rest. */
-export const COLUMNS: {
-  id: string;
-  title: string;
-  hint: string;
-  states: string[];
-}[] = [
-  {
-    id: "human",
-    title: "À valider",
-    hint: "une décision t'attend",
-    states: ["HUMAN"],
-  },
-  {
-    id: "active",
-    title: "En cours",
-    hint: "l'agent travaille ou attend un évènement",
-    states: ["ACTIVE", "WAITING"],
-  },
-  {
-    id: "queued",
-    title: "En file",
-    hint: "pas encore pris en charge",
-    states: ["QUEUED", "BLOCKED"],
-  },
-  {
-    id: "failed",
-    title: "Échec",
-    hint: "à relancer ou abandonner",
-    states: ["FAILED"],
-  },
-  {
-    id: "done",
-    title: "Terminés",
-    hint: "terminés ou annulés",
-    states: ["COMPLETED", "CANCELLED"],
-  },
-];
+export { groupRuns } from "./columns";
 
-const DONE_SHOWN = 8;
+const HISTORY_SHOWN = 8;
 
 export function since(iso: string | null | undefined, now = Date.now()) {
   if (!iso) return "";
@@ -65,40 +31,14 @@ export function since(iso: string | null | undefined, now = Date.now()) {
   return `${Math.round(h / 24)} j`;
 }
 
-/** Runs grouped by column, filtered by project and text. */
-export function groupRuns(
-  runs: FactoryRun[],
-  filter: { project?: string; text?: string; workflow?: string },
-) {
-  const q = (filter.text ?? "").trim().toLowerCase();
-  const kept = runs.filter(
-    (r) =>
-      (!filter.project || r.project === filter.project) &&
-      (!filter.workflow || r.workflow === filter.workflow) &&
-      (!q ||
-        `#${r.issue} ${r.title} ${r.workflowName ?? r.workflow} ${r.nodeLabel ?? ""}`
-          .toLowerCase()
-          .includes(q)),
-  );
-  const out: Record<string, FactoryRun[]> = {};
-  for (const c of COLUMNS)
-    out[c.id] = kept
-      .filter((r) => c.states.includes(r.state))
-      // Oldest wait first where it matters; most recent first for history.
-      .sort((a, b) => {
-        const ka = a.nodeEnteredAt ?? a.updatedAt;
-        const kb = b.nodeEnteredAt ?? b.updatedAt;
-        return c.id === "done" ? kb.localeCompare(ka) : ka.localeCompare(kb);
-      });
-  return out;
-}
-
 function TicketCard({
   run,
   highlighted,
+  onReview,
 }: {
   run: FactoryRun;
   highlighted: boolean;
+  onReview: (runId: number) => void;
 }) {
   const start = useStartRun();
   const [confirmRetry, setConfirmRetry] = React.useState(false);
@@ -179,17 +119,23 @@ function TicketCard({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {run.state === "HUMAN" && (
+          <button
+            type="button"
+            onClick={() => onReview(run.id)}
+            className="cursor-pointer rounded bg-contrast px-2 py-0.5 font-semibold text-contrast-foreground hover:opacity-90"
+            data-testid={`ticket-decide-${run.id}`}
+          >
+            Décider
+          </button>
+        )}
         {run.conversationId && (
           <Link
             to={`/conversations/${run.conversationId}`}
-            className={cn(
-              run.state === "HUMAN"
-                ? "rounded bg-contrast px-2 py-0.5 font-semibold text-contrast-foreground hover:opacity-90"
-                : "underline underline-offset-2",
-            )}
+            className="underline underline-offset-2"
             data-testid={`ticket-open-${run.id}`}
           >
-            {run.state === "HUMAN" ? "Décider" : "Conversation"}
+            Conversation
           </Link>
         )}
         {prUrl && (
@@ -312,22 +258,32 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** Factory tickets dashboard: every run of every project, by state. */
+/** Factory tickets dashboard: the selected project's runs (or every project's), by column. */
 export default function TicketsPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const highlight = Number(params.get("run") ?? 0);
+  const reviewId = Number(params.get("review") ?? 0) || null;
   const { data: runs, error, isLoading } = useRuns();
-  const { data: projects } = useProjects();
-  const [project, setProject] = React.useState("");
+  const { projectId, project } = useSelectedProject();
   const [workflow, setWorkflow] = React.useState("");
   const [text, setText] = React.useState("");
-  const [showAllDone, setShowAllDone] = React.useState(false);
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   const [creating, setCreating] = React.useState(false);
 
-  const groups = React.useMemo(
-    () => groupRuns(runs ?? [], { project, text, workflow }),
-    [runs, project, text, workflow],
+  // A project's own columns apply when that project is selected.
+  const customColumns = project?.settings?.columns;
+  const board = React.useMemo(
+    () =>
+      groupRuns(
+        runs ?? [],
+        { project: projectId, text, workflow },
+        customColumns?.length ? customColumns : DEFAULT_COLUMNS,
+      ),
+    [runs, projectId, text, workflow, customColumns],
   );
+  const needMe = (runs ?? []).filter(
+    (r) => r.state === "HUMAN" && (!projectId || r.project === projectId),
+  ).length;
   const workflows = React.useMemo(
     () =>
       [
@@ -337,6 +293,16 @@ export default function TicketsPage() {
       ].sort((a, b) => a[1].localeCompare(b[1])),
     [runs],
   );
+  const openReview = (id: number) => {
+    const next = new URLSearchParams(params);
+    next.set("review", String(id));
+    setParams(next);
+  };
+  const closeReview = React.useCallback(() => {
+    const next = new URLSearchParams(params);
+    next.delete("review");
+    setParams(next);
+  }, [params, setParams]);
 
   return (
     <div
@@ -344,16 +310,26 @@ export default function TicketsPage() {
       data-testid="factory-tickets-page"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-2 text-lg font-semibold">Tickets</h1>
-        {COLUMNS.slice(0, 4).map((c) => (
-          <span
-            key={c.id}
-            className="rounded-full border border-border px-2 text-xs leading-6 text-muted"
-            data-testid={`tickets-count-${c.id}`}
-          >
-            {c.title} <b className="text-foreground">{groups[c.id]!.length}</b>
+        <h1 className="mr-2 text-lg font-semibold">
+          Tickets
+          <span className="ml-2 text-sm font-normal text-muted">
+            {project ? project.repo : "tous les projets"}
           </span>
-        ))}
+        </h1>
+        <span
+          className={cn(
+            "rounded-full border px-2 text-xs leading-6",
+            needMe
+              ? "border-feedback-warning text-feedback-warning"
+              : "border-border text-muted",
+          )}
+          data-testid="tickets-need-me"
+        >
+          {needMe} décision(s) attendue(s)
+        </span>
+        {customColumns?.length ? (
+          <span className="text-xs text-muted">colonnes du projet</span>
+        ) : null}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           <input
             value={text}
@@ -362,20 +338,6 @@ export default function TicketsPage() {
             className="w-56 rounded border border-border bg-base-secondary px-2 py-1 text-xs"
             data-testid="tickets-search"
           />
-          {projects && projects.length > 1 && (
-            <select
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              className="rounded border border-border bg-base-secondary px-2 py-1 text-xs"
-            >
-              <option value="">Tous les projets</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.repo}
-                </option>
-              ))}
-            </select>
-          )}
           {workflows.length > 1 && (
             <select
               value={workflow}
@@ -391,6 +353,12 @@ export default function TicketsPage() {
               ))}
             </select>
           )}
+          <Link
+            to="/factory-project"
+            className="text-xs text-muted hover:text-foreground"
+          >
+            Configurer
+          </Link>
           <button
             type="button"
             onClick={() => setCreating((v) => !v)}
@@ -401,6 +369,7 @@ export default function TicketsPage() {
           </button>
         </span>
       </div>
+      <FactoryStatusBar />
       {creating && (
         <div className="max-w-xl">
           <NewTicketForm onDone={() => setCreating(false)} />
@@ -413,11 +382,15 @@ export default function TicketsPage() {
         </p>
       )}
       {runs && (
-        <div className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {COLUMNS.map((c) => {
-            const all = groups[c.id]!;
+        <div
+          className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-flow-col xl:auto-cols-fr xl:grid-cols-none"
+          data-testid="tickets-board"
+        >
+          {board.columns.map((c) => {
+            const all = board.groups[c.id]!;
+            const history = isHistoryColumn(c);
             const shown =
-              c.id === "done" && !showAllDone ? all.slice(0, DONE_SHOWN) : all;
+              history && !expanded[c.id] ? all.slice(0, HISTORY_SHOWN) : all;
             return (
               <section
                 key={c.id}
@@ -426,8 +399,17 @@ export default function TicketsPage() {
               >
                 <header className="flex items-baseline gap-2">
                   <h2 className="text-sm font-semibold">{c.title}</h2>
-                  <span className="text-xs text-muted">{all.length}</span>
-                  <span className="truncate text-3xs text-muted">{c.hint}</span>
+                  <span
+                    className="text-xs text-muted"
+                    data-testid={`tickets-count-${c.id}`}
+                  >
+                    {all.length}
+                  </span>
+                  {c.hint && (
+                    <span className="truncate text-3xs text-muted">
+                      {c.hint}
+                    </span>
+                  )}
                 </header>
                 <ul className="flex flex-col gap-2">
                   {shown.map((r) => (
@@ -435,6 +417,7 @@ export default function TicketsPage() {
                       key={r.id}
                       run={r}
                       highlighted={r.id === highlight}
+                      onReview={openReview}
                     />
                   ))}
                   {all.length === 0 && (
@@ -443,15 +426,17 @@ export default function TicketsPage() {
                     </li>
                   )}
                 </ul>
-                {c.id === "done" && all.length > DONE_SHOWN && (
+                {history && all.length > HISTORY_SHOWN && (
                   <button
                     type="button"
-                    onClick={() => setShowAllDone((v) => !v)}
+                    onClick={() =>
+                      setExpanded((v) => ({ ...v, [c.id]: !v[c.id] }))
+                    }
                     className="cursor-pointer text-xs text-muted hover:text-foreground"
                   >
-                    {showAllDone
+                    {expanded[c.id]
                       ? "Réduire"
-                      : `Voir les ${all.length - DONE_SHOWN} autres`}
+                      : `Voir les ${all.length - HISTORY_SHOWN} autres`}
                   </button>
                 )}
               </section>
@@ -459,6 +444,7 @@ export default function TicketsPage() {
           })}
         </div>
       )}
+      {reviewId && <ReviewPanel runId={reviewId} onClose={closeReview} />}
     </div>
   );
 }
