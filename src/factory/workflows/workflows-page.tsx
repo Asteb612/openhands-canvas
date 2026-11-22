@@ -46,10 +46,12 @@ import {
 import { blankDefinition, newNode, TYPE_COLOR } from "./defaults";
 import { NodeInspector, WorkflowSettings } from "./inspector";
 import { WorkflowNodeCard } from "./workflow-node";
+import { RoutedEdge } from "./workflow-edge";
 
 const ID_RE = /^[a-z][a-z0-9_-]{0,47}$/;
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const nodeTypes = { workflow: WorkflowNodeCard };
+const edgeTypes = { routed: RoutedEdge };
 const button =
   "rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-surface-raised disabled:opacity-50";
 const primary =
@@ -433,6 +435,7 @@ function Editor({
       ports: validation?.ports,
       problems: validation?.problems,
       runsByNode,
+      sizes: measured,
       readOnly,
     });
     return {
@@ -717,6 +720,7 @@ function Editor({
             nodes={flow.nodes}
             edges={flow.edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}

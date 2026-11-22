@@ -23,6 +23,14 @@ export interface WorkflowNodeData extends Record<string, unknown> {
 
 export type WorkflowFlowNode = FlowNode<WorkflowNodeData, "workflow">;
 
+export interface RoutedEdgeData extends Record<string, unknown> {
+  obstacles: Box[];
+  sourceBox?: Box;
+  targetBox?: Box;
+  lane: number;
+  problem: boolean;
+}
+
 /** Ports of a node: the server's answer when known, else what the edges use. */
 export function portsOf(
   def: WorkflowDefinition,
@@ -49,7 +57,7 @@ export function autoLayout(
   const missing = def.nodes.some((n) => !def.layout[n.id]);
   if (!force && !missing) return def.layout;
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 90 });
+  g.setGraph({ rankdir: "LR", nodesep: 56, ranksep: 120 }); // room for routed links and labels
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of def.nodes)
     g.setNode(n.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
@@ -88,8 +96,10 @@ export function toFlow(
     problems?: Problem[];
     runsByNode?: Map<string, number>;
     readOnly: boolean;
+    /** Rendered sizes (React Flow measurements) for exact routing. */
+    sizes?: Record<string, { width: number; height: number }>;
   },
-): { nodes: WorkflowFlowNode[]; edges: FlowEdge[] } {
+): { nodes: WorkflowFlowNode[]; edges: FlowEdge<RoutedEdgeData>[] } {
   const layout = autoLayout(def);
   const probs = problemsByNode(opts.problems ?? []);
   const nodes: WorkflowFlowNode[] = def.nodes.map((n) => {
@@ -115,17 +125,46 @@ export function toFlow(
       .filter((p) => p.edge)
       .map((p) => `${p.edge!.from}:${p.edge!.port}`),
   );
-  const edges: FlowEdge[] = def.edges.map((e) => ({
+  const boxes: Box[] = nodes.map((n) => ({
+    id: n.id,
+    x: n.position.x,
+    y: n.position.y,
+    w: opts.sizes?.[n.id]?.width ?? NODE_WIDTH,
+    h: opts.sizes?.[n.id]?.height ?? estimateHeight(n.data.ports.length),
+  }));
+  const boxById = new Map(boxes.map((b) => [b.id, b]));
+  // Lanes for links that need a corridor (loops, or a node in the way), shortest
+  // first so they stay inside the longer ones.
+  const approx = def.edges.map((e) => {
+    const sb = boxById.get(e.from);
+    const tb = boxById.get(e.to);
+    if (!sb || !tb) return { e, corridor: false, span: 0 };
+    const sp = { x: sb.x + sb.w, y: sb.y + sb.h / 2 };
+    const tp = { x: tb.x, y: tb.y + tb.h / 2 };
+    const others = boxes.filter((b) => b.id !== e.from && b.id !== e.to);
+    const route = routeEdge(sp, tp, others, 0, { source: sb, target: tb });
+    return { e, corridor: route.length > 4, span: Math.abs(tp.x - sp.x) };
+  });
+  const lanes = new Map<string, number>();
+  approx
+    .filter((a) => a.corridor)
+    .sort((a, b) => a.span - b.span)
+    .forEach((a, i) => lanes.set(edgeId(a.e.from, a.e.port), i));
+  const edges: FlowEdge<RoutedEdgeData>[] = def.edges.map((e) => ({
     id: edgeId(e.from, e.port),
     source: e.from,
     sourceHandle: e.port,
     target: e.to,
+    type: "routed",
     label: e.port,
     deletable: !opts.readOnly,
-    animated: false,
-    style: edgeProblems.has(`${e.from}:${e.port}`)
-      ? { stroke: "#ef4444" }
-      : undefined,
+    data: {
+      obstacles: boxes.filter((b) => b.id !== e.from && b.id !== e.to),
+      sourceBox: boxById.get(e.from),
+      targetBox: boxById.get(e.to),
+      lane: lanes.get(edgeId(e.from, e.port)) ?? 0,
+      problem: edgeProblems.has(`${e.from}:${e.port}`),
+    },
   }));
   return { nodes, edges };
 }
@@ -156,4 +195,148 @@ export function renameNode(
     })),
     layout,
   };
+}
+
+// ------------------------------------------------------------------ edge routing
+// Orthogonal routes computed from node boxes, so links never cross a node:
+// direct 3-segment path when free, otherwise through a corridor above/below the
+// nodes in the way (loops go below), one lane per corridor link.
+
+export interface Box {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface Point {
+  x: number;
+  y: number;
+}
+
+const GAP = 22; // horizontal stub out of a handle
+const MARGIN = 10; // clearance around nodes
+const LANE = 14; // spacing between parallel corridors
+
+/** Estimated rendered height of a node card (measured sizes win when known). */
+export function estimateHeight(ports: number): number {
+  return 84 + ports * 17;
+}
+
+function hitsBox(a: Point, b: Point, box: Box): boolean {
+  const x1 = Math.min(a.x, b.x);
+  const x2 = Math.max(a.x, b.x);
+  const y1 = Math.min(a.y, b.y);
+  const y2 = Math.max(a.y, b.y);
+  return (
+    x2 > box.x - MARGIN &&
+    x1 < box.x + box.w + MARGIN &&
+    y2 > box.y - MARGIN &&
+    y1 < box.y + box.h + MARGIN
+  );
+}
+
+function pathIsFree(points: Point[], boxes: Box[]): boolean {
+  for (let i = 0; i < points.length - 1; i++) {
+    for (const b of boxes)
+      if (hitsBox(points[i]!, points[i + 1]!, b)) return false;
+  }
+  return true;
+}
+
+/**
+ * Route from a source handle (right side) to a target handle (left side).
+ * `boxes` excludes the source and target nodes; `lane` separates corridor links.
+ */
+export function routeEdge(
+  s: Point,
+  t: Point,
+  boxes: Box[],
+  lane = 0,
+  ends: { source?: Box; target?: Box } = {},
+): Point[] {
+  const out = s.x + GAP;
+  const inn = t.x - GAP;
+  if (inn > out) {
+    // Forward: try a vertical segment at a few x positions between the nodes.
+    const candidates = [(out + inn) / 2, out, inn];
+    for (let i = 1; i < 6; i++) candidates.push(out + ((inn - out) * i) / 6);
+    for (const mx of candidates) {
+      const p = [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t];
+      if (
+        Math.abs(s.y - t.y) < 1
+          ? pathIsFree([s, t], boxes)
+          : pathIsFree(p, boxes)
+      ) {
+        return Math.abs(s.y - t.y) < 1 ? [s, t] : p;
+      }
+    }
+  }
+  // Corridor above or below everything between the two ends (loops: below).
+  const x1 = Math.min(out, inn) - MARGIN;
+  const x2 = Math.max(out, inn) + MARGIN;
+  const span = [
+    ...boxes,
+    ...(ends.source ? [ends.source] : []),
+    ...(ends.target ? [ends.target] : []),
+  ].filter((b) => b.x + b.w > x1 && b.x < x2);
+  const top = Math.min(s.y, t.y, ...span.map((b) => b.y));
+  const bottom = Math.max(s.y, t.y, ...span.map((b) => b.y + b.h));
+  const below = bottom + MARGIN * 2 + lane * LANE;
+  const above = top - MARGIN * 2 - lane * LANE;
+  const back = inn <= out;
+  const yc =
+    back ||
+    Math.abs(below - (s.y + t.y) / 2) <= Math.abs(above - (s.y + t.y) / 2)
+      ? below
+      : above;
+  const ox = out + (back ? lane * 4 : 0);
+  const ix = inn - (back ? lane * 4 : 0);
+  return [
+    s,
+    { x: ox, y: s.y },
+    { x: ox, y: yc },
+    { x: ix, y: yc },
+    { x: ix, y: t.y },
+    t,
+  ];
+}
+
+/** SVG path through orthogonal points with rounded corners, and a label anchor. */
+export function roundedPath(
+  points: Point[],
+  radius = 8,
+): { d: string; label: Point } {
+  let d = `M ${points[0]!.x} ${points[0]!.y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i - 1]!;
+    const c = points[i]!;
+    const n = points[i + 1]!;
+    const r = Math.min(
+      radius,
+      Math.hypot(c.x - p.x, c.y - p.y) / 2,
+      Math.hypot(n.x - c.x, n.y - c.y) / 2,
+    );
+    const a = {
+      x: c.x + (Math.sign(p.x - c.x) * r || 0),
+      y: c.y + (Math.sign(p.y - c.y) * r || 0),
+    };
+    const b = {
+      x: c.x + (Math.sign(n.x - c.x) * r || 0),
+      y: c.y + (Math.sign(n.y - c.y) * r || 0),
+    };
+    d += ` L ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`;
+  }
+  const last = points[points.length - 1]!;
+  d += ` L ${last.x} ${last.y}`;
+  // Label on the longest horizontal segment (readable), else the longest one.
+  let best = { len: -1, at: points[0]! };
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y) * (a.y === b.y ? 2 : 1);
+    if (len > best.len)
+      best = { len, at: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  }
+  return { d, label: best.at };
 }

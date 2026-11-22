@@ -3,7 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkflowDefinition } from "#/factory/workflows/api";
-import { autoLayout, renameNode, toFlow } from "#/factory/workflows/graph";
+import {
+  autoLayout,
+  renameNode,
+  roundedPath,
+  routeEdge,
+  toFlow,
+} from "#/factory/workflows/graph";
 import { blankDefinition, newNode } from "#/factory/workflows/defaults";
 import { MemoryRouter } from "react-router";
 import WorkflowsPage from "#/factory/workflows/workflows-page";
@@ -102,6 +108,78 @@ describe("workflow graph helpers", () => {
     const b = blankDefinition("x");
     expect(newNode(b, "agent").id).toBe("agent_1");
     expect(b.edges).toEqual([{ from: "start", port: "out", to: "done" }]);
+  });
+});
+
+describe("edge routing", () => {
+  const box = (id: string, x: number, y: number) => ({
+    id,
+    x,
+    y,
+    w: 100,
+    h: 60,
+  });
+  const crosses = (
+    pts: { x: number; y: number }[],
+    b: { x: number; y: number; w: number; h: number },
+  ) =>
+    pts.slice(1).some((p, i) => {
+      const a = pts[i]!;
+      return (
+        Math.max(a.x, p.x) > b.x &&
+        Math.min(a.x, p.x) < b.x + b.w &&
+        Math.max(a.y, p.y) > b.y &&
+        Math.min(a.y, p.y) < b.y + b.h
+      );
+    });
+
+  it("goes straight when nothing is in the way", () => {
+    expect(routeEdge({ x: 100, y: 30 }, { x: 300, y: 30 }, [])).toEqual([
+      { x: 100, y: 30 },
+      { x: 300, y: 30 },
+    ]);
+  });
+
+  it("goes around a node sitting on the straight line", () => {
+    const blocker = box("mid", 180, 0);
+    const pts = routeEdge({ x: 100, y: 30 }, { x: 400, y: 30 }, [blocker]);
+    expect(crosses(pts, blocker)).toBe(false);
+  });
+
+  it("routes loops below the nodes, in separate lanes", () => {
+    const src = box("src", 300, 0);
+    const tgt = box("tgt", 0, 0);
+    const a = routeEdge({ x: 400, y: 30 }, { x: 0, y: 30 }, [], 0, {
+      source: src,
+      target: tgt,
+    });
+    const b = routeEdge({ x: 400, y: 30 }, { x: 0, y: 30 }, [], 1, {
+      source: src,
+      target: tgt,
+    });
+    expect(Math.max(...a.map((p) => p.y))).toBeGreaterThan(60);
+    expect(Math.max(...b.map((p) => p.y))).toBeGreaterThan(
+      Math.max(...a.map((p) => p.y)),
+    );
+    expect(crosses(a, src) || crosses(a, tgt)).toBe(false);
+  });
+
+  it("builds a rounded path with the label on a horizontal segment", () => {
+    const { d, label } = roundedPath([
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 50, y: 100 },
+      { x: 200, y: 100 },
+    ]);
+    expect(d.startsWith("M 0 0")).toBe(true);
+    expect(d).toContain("Q 50 0");
+    expect(label).toEqual({ x: 125, y: 100 });
+  });
+
+  it("toFlow gives every link a routed edge with obstacles and lanes", () => {
+    const f = toFlow(def, { readOnly: false });
+    expect(f.edges.every((e) => e.type === "routed")).toBe(true);
+    expect(f.edges[0]!.data!.obstacles.map((b) => b.id)).toEqual(["done"]);
   });
 });
 
