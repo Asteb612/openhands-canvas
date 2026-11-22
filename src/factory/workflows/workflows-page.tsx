@@ -12,6 +12,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cn } from "#/utils/utils";
+import { useColorTheme } from "#/hooks/use-color-theme";
+import { COLOR_THEMES } from "#/themes/color-themes";
 import {
   FactoryApiError,
   fetchVersion,
@@ -332,6 +334,8 @@ function Editor({ workflowId }: { workflowId: string }) {
   const { data: projects } = useProjects();
   const { data: runs } = useRuns();
   const save = useSaveWorkflow();
+  // Follow Canvas' own theme (it does not follow prefers-color-scheme).
+  const colorMode = COLOR_THEMES[useColorTheme()].appearance;
   const duplicate = useDuplicateWorkflow();
   const archive = useArchiveWorkflow();
 
@@ -699,7 +703,7 @@ function Editor({ workflowId }: { workflowId: string }) {
             }}
             nodesConnectable={!readOnly}
             deleteKeyCode={readOnly ? null : ["Delete", "Backspace"]}
-            colorMode="system"
+            colorMode={colorMode}
             fitView
             minZoom={0.2}
             proOptions={{ hideAttribution: false }}
