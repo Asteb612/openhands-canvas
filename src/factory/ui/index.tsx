@@ -34,66 +34,6 @@ export const textareaClassName = formControlMultilineFieldClassName;
 export const textActionClassName =
   "cursor-pointer text-sm text-muted underline-offset-2 hover:text-content hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 
-/**
- * Page shell shared by the factory pages: a top bar (title, badge, actions) like the
- * automations pages, and a scrolling body; `width="narrow"` centers settings-like
- * content at the Canvas settings width.
- */
-export function FactoryPage({
-  title,
-  badge,
-  actions,
-  children,
-  width = "wide",
-  testId,
-  bodyClassName,
-}: {
-  title: React.ReactNode;
-  badge?: React.ReactNode;
-  actions?: React.ReactNode;
-  children: React.ReactNode;
-  width?: "wide" | "narrow" | "full";
-  testId?: string;
-  bodyClassName?: string;
-}) {
-  return (
-    <div className="flex h-full min-h-0 flex-col" data-testid={testId}>
-      <header className="flex min-h-14 shrink-0 items-center border-b border-border bg-canvas-base px-5 py-2">
-        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <h1 className="min-w-0 truncate text-lg font-medium text-content">
-              {title}
-            </h1>
-            {badge}
-          </div>
-          {actions && (
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              {actions}
-            </div>
-          )}
-        </div>
-      </header>
-      {width === "full" ? (
-        <div className={cn("flex min-h-0 flex-1", bodyClassName)}>
-          {children}
-        </div>
-      ) : (
-        <div className="custom-scrollbar-always min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] px-5 pt-5 pb-12">
-          <div
-            className={cn(
-              "mx-auto flex w-full flex-col gap-5",
-              width === "narrow" && "max-w-200",
-              bodyClassName,
-            )}
-          >
-            {children}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** A titled block of a settings-like page. */
 export function Section({
   title,
@@ -110,17 +50,17 @@ export function Section({
 }) {
   return (
     <section
-      className="flex flex-col gap-3 rounded-xl border border-border bg-base-secondary p-4"
+      className="rounded-2xl border border-border bg-surface"
       data-testid={testId}
     >
-      <header className="flex flex-wrap items-start justify-between gap-2">
+      <header className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-5 py-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="text-base font-medium text-content">{title}</h2>
-          {description && <p className="text-sm text-muted">{description}</p>}
+          <h2 className="text-sm font-medium text-content">{title}</h2>
+          {description && <p className="text-xs text-muted">{description}</p>}
         </div>
         {actions}
       </header>
-      {children}
+      <div className="flex flex-col gap-3 px-5 py-5">{children}</div>
     </section>
   );
 }
@@ -266,3 +206,5 @@ export function useConfirm() {
   ) : null;
   return { ask, modal };
 }
+
+export * from "./shell";

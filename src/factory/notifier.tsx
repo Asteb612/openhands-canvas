@@ -74,7 +74,7 @@ export function diffAlerts(
     const to = r.conversationId
       ? conversationPath(r.project, r.conversationId)
       : `/factory/tickets?run=${r.id}`;
-    const head = `[${r.project}] #${r.issue}`;
+    const head = `[${r.project}] ${r.issue === null ? `⏱ ${r.workflowName ?? r.workflow}` : `#${r.issue}`}`;
     if (r.state === "HUMAN")
       out.push({
         key: `run-${r.id}-human-${r.node ?? ""}`,

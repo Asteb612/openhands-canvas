@@ -3,7 +3,7 @@ import { ReactFlow, ReactFlowProvider, Background } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useColorTheme } from "#/hooks/use-color-theme";
 import { COLOR_THEMES } from "#/themes/color-themes";
-import { useWorkflowVersion } from "../api";
+import { useWorkflowVersion, type WorkflowScope } from "../api";
 import { useFactoryT } from "../i18n";
 import { StateMessage } from "../ui";
 import { toFlow } from "./graph";
@@ -19,12 +19,15 @@ const edgeTypes = { routed: RoutedEdge };
  */
 export function WorkflowPreview({
   project,
+  scope,
   workflowId,
   version,
   currentNode,
   height = 260,
 }: {
-  project: string;
+  /** The project whose workflow it is (or give `scope`, e.g. a template). */
+  project?: string;
+  scope?: WorkflowScope;
   workflowId: string;
   version: number;
   currentNode: string | null | undefined;
@@ -34,7 +37,11 @@ export function WorkflowPreview({
     data: def,
     error,
     isLoading,
-  } = useWorkflowVersion({ kind: "project", project }, workflowId, version);
+  } = useWorkflowVersion(
+    scope ?? { kind: "project", project: project ?? "" },
+    workflowId,
+    version,
+  );
   const t = useFactoryT();
   const colorMode = COLOR_THEMES[useColorTheme()].appearance;
   const flow = React.useMemo(() => {

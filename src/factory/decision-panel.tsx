@@ -4,7 +4,8 @@
  * engine reads decisions). Approvals and rejections are confirmed in the Canvas modal.
  */
 import React from "react";
-import { FileText } from "lucide-react";
+import { FileText, X } from "lucide-react";
+import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
 import { MarkdownRenderer } from "#/components/features/markdown/markdown-renderer";
 import { displaySuccessToast } from "#/utils/custom-toast-handlers";
 import { cn } from "#/utils/utils";
@@ -174,5 +175,36 @@ export function DecisionPanel({
       </div>
       {modal}
     </div>
+  );
+}
+
+/** The decision panel in a modal (dashboard, tickets). */
+export function DecisionModal({
+  runId,
+  onClose,
+}: {
+  runId: number;
+  onClose: () => void;
+}) {
+  const t = useFactoryT();
+  return (
+    <ModalBackdrop onClose={onClose} aria-label={t("decisionTitle")}>
+      <div
+        className="flex max-h-[85vh] w-[min(56rem,92vw)] flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-base-secondary p-4"
+        data-testid="review-panel"
+      >
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("cancel")}
+            className="cursor-pointer text-muted hover:text-content"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <DecisionPanel runId={runId} onDecided={onClose} />
+      </div>
+    </ModalBackdrop>
   );
 }

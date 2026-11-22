@@ -241,6 +241,23 @@ describe("helpers", () => {
   });
 });
 
+/** The pages also get a scheduled run (no issue). */
+const PAGE_RUNS: FactoryRun[] = [
+  ...RUNS,
+  run({
+    id: 7,
+    kind: "scheduled",
+    issue: null,
+    state: "ACTIVE",
+    title: "Revue hebdomadaire",
+    workflow: "weekly-review",
+    workflowName: "Revue hebdomadaire",
+    nodeLabel: "Revue du dépôt",
+    conversationId: "s1",
+    createdAt: "2026-11-23T07:00:00Z",
+  }),
+];
+
 describe("tickets page", () => {
   let calls: { url: string; method: string; body?: unknown }[];
   beforeEach(() => {
@@ -266,7 +283,7 @@ describe("tickets page", () => {
         const json = (data: unknown) =>
           new Response(JSON.stringify(data), { status: 200 });
         if (url.endsWith("/factory-api/runs") && method === "GET")
-          return json({ runs: RUNS });
+          return json({ runs: PAGE_RUNS });
         if (url.endsWith("/factory-api/status"))
           return json({
             control: { paused: false, by: null, at: null, reason: "" },
@@ -412,6 +429,65 @@ describe("tickets page", () => {
         { paused: true },
       ),
     );
+  });
+
+  it("a scheduled run has no issue: named after its workflow, no issue link", async () => {
+    await renderPage();
+    const card = await screen.findByTestId("ticket-card-7");
+    expect(card).toHaveTextContent("⏱");
+    expect(card).toHaveTextContent("Revue hebdomadaire");
+    expect(within(card).queryByRole("link", { name: /#/ })).toBeNull();
+  });
+
+  it("list view: one activity row per run", async () => {
+    window.localStorage.setItem("openhands-automations-view", "list");
+    try {
+      await renderPage();
+      expect(await screen.findByTestId("tickets-list")).toBeInTheDocument();
+      expect(screen.getByTestId("ticket-row-1")).toHaveTextContent("#9001");
+      expect(screen.getByTestId("ticket-row-7")).toHaveTextContent("⏱");
+      expect(screen.queryByTestId("tickets-board")).toBeNull();
+    } finally {
+      window.localStorage.removeItem("openhands-automations-view");
+    }
+  });
+
+  it("dashboard: health tiles, what waits for the owner, recent activity", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-23T12:00:00Z"));
+    try {
+      const { default: DashboardPage } =
+        await import("#/factory/dashboard-page");
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter initialEntries={["/factory"]}>
+            <DashboardPage />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("dash-to-handle")).toHaveTextContent(
+          "Export PDF",
+        ),
+      );
+      expect(screen.getByTestId("overview-tile-human")).toHaveTextContent("1");
+      expect(screen.getByTestId("overview-tile-active")).toHaveTextContent("2");
+      expect(screen.getByTestId("overview-tile-failed")).toHaveTextContent("1");
+      const todo = screen.getByTestId("dash-to-handle");
+      expect(within(todo).getByText("Export PDF")).toBeInTheDocument();
+      expect(within(todo).getByText(/maxVisits atteint/)).toBeInTheDocument();
+      expect(within(todo).queryByText("Flux RSS")).toBeNull(); // other project
+      await userEvent.click(within(todo).getByTestId("dash-decide-1"));
+      expect(
+        await screen.findByText("Spécification à valider"),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("retries a failed run after confirmation", async () => {

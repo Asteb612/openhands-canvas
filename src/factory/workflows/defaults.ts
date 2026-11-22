@@ -123,6 +123,8 @@ export function nodeSummary(n: WorkflowNode, t: T = englishT): string {
         return t("wfSumStatus", { status: tr.status });
       if (tr.kind === "comment_command") return `/factory run ${tr.command}`;
       if (tr.kind === "cron") return t("wfSumCron", { cron: tr.cron });
+      if (tr.kind === "schedule")
+        return t("wfSumSchedule", { cron: tr.cron, tz: tr.timezone ?? "" });
       if (tr.kind === "chain")
         return t("wfSumChain", {
           wf: tr.workflowId,

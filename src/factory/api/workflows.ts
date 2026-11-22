@@ -188,6 +188,29 @@ export function useCreateFromTemplate() {
   });
 }
 
+/** "Run now" for a scheduled workflow of the project (no issue). */
+export function useRunNow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { project: string; id: string }) =>
+      factoryFetch<{ runId: number }>(
+        `/projects/${enc(v.project)}/workflows/${enc(v.id)}/run`,
+        { method: "POST" },
+      ),
+    onSuccess: (_d, v) =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: factoryKeys.runFamily() }),
+        qc.invalidateQueries({
+          queryKey: factoryKeys.workflows({
+            kind: "project",
+            project: v.project,
+          }),
+        }),
+      ]),
+    meta: QUIET,
+  });
+}
+
 /** Publishes a project's workflow to the template library. */
 export function usePublishWorkflow() {
   const invalidate = useInvalidateWorkflows();

@@ -78,7 +78,7 @@ export function groupRuns(
       (!filter.project || r.project === filter.project) &&
       (!filter.workflow || r.workflow === filter.workflow) &&
       (!q ||
-        `#${r.issue} ${r.title} ${r.workflowName ?? r.workflow} ${r.nodeLabel ?? ""}`
+        `${r.issue === null ? "" : `#${r.issue}`} ${r.title} ${r.workflowName ?? r.workflow} ${r.nodeLabel ?? ""}`
           .toLowerCase()
           .includes(q)),
   );

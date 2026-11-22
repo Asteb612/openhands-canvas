@@ -25,9 +25,11 @@ export interface FactoryOutcome {
 
 export interface FactoryTicket {
   version: 1;
-  issue: number;
+  /** Null for a scheduled run (no GitHub issue). */
+  issue: number | null;
+  kind?: "issue" | "scheduled";
   title: string;
-  url?: string;
+  url?: string | null;
   repo?: string;
   branch?: string;
   state: string;
@@ -55,7 +57,7 @@ export function parseFactoryTicket(raw: string): FactoryTicket | null {
     const t = JSON.parse(raw) as Partial<FactoryTicket>;
     if (
       t.version !== 1 ||
-      typeof t.issue !== "number" ||
+      (typeof t.issue !== "number" && t.issue !== null) ||
       !t.state ||
       !Array.isArray(t.steps)
     ) {
