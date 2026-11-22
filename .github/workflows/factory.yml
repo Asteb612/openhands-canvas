@@ -39,7 +39,7 @@ jobs:
       contents: read
       packages: write
     env:
-      IMAGE: ghcr.io/asteb612/openhands-canvas
+      IMAGE: ghcr.io/asteb612/factory-canvas
     steps:
       - name: Free disk space (the agent-server base image is large)
         run: |
