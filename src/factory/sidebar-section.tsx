@@ -1,9 +1,9 @@
-/** The factory block of the Canvas sidebar: active project, its pages, notifications. */
+/** The factory block of the Canvas sidebar: the active project's pages, notifications. */
 import { FolderCog, Kanban, Workflow } from "lucide-react";
 import { SidebarNavLink } from "#/components/features/sidebar/sidebar-nav-link";
 import { useFactoryT } from "./i18n";
 import { FactoryNotifier } from "./notifier";
-import { FactoryProjectSelector, useSelectedProject } from "./project-context";
+import { FactoryProjectSync, useSelectedProject } from "./project-context";
 
 const ICON_SIZE = 18;
 
@@ -13,7 +13,7 @@ export function FactorySidebarSection({ collapsed }: { collapsed: boolean }) {
   return (
     <>
       {/* Mounted even without projects: it registers their backends once they load. */}
-      <FactoryProjectSelector collapsed={collapsed} />
+      <FactoryProjectSync />
       {projects.length > 0 && (
         <>
           <SidebarNavLink
