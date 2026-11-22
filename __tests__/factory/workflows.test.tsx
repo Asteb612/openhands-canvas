@@ -244,6 +244,35 @@ describe("WorkflowsPage", () => {
     expect(v.headers["X-Factory-Request"]).toBe("1");
   });
 
+  it("keeps unsaved edits and the selection when the same version is refetched", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/workflows?wf=mine&node=review"]}>
+          <WorkflowsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("wf-node-id")).toHaveValue("review");
+    const label = screen
+      .getByTestId("wf-inspector")
+      .querySelectorAll("input")[1]!;
+    await user.type(label, "Relecture");
+    await client.invalidateQueries();
+    await waitFor(() =>
+      expect(
+        calls.filter((c) => c.url.endsWith("/workflows/mine")).length,
+      ).toBeGreaterThan(1),
+    );
+    expect(screen.getByTestId("wf-node-id")).toHaveValue("review");
+    expect(
+      screen.getByTestId("wf-inspector").querySelectorAll("input")[1],
+    ).toHaveValue("Relecture");
+  });
+
   it("edits a workflow and saves a new version with the header", async () => {
     const user = userEvent.setup();
     renderPage();

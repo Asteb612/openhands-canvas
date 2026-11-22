@@ -372,20 +372,25 @@ function Editor({
     Record<string, { width: number; height: number }>
   >({});
 
-  // Load (or reload after a save) the latest version.
+  // Load the latest version, and reload only when a NEW version exists (after a
+  // save, here or elsewhere). Refetches of the same version (window focus,
+  // invalidations) must not wipe the selection or unsaved edits.
+  const latestVersion = data?.workflow.latestVersion;
+  const loadedVersion = React.useRef<number | null>(null);
   React.useEffect(() => {
-    if (!data) return;
+    if (!data || latestVersion === undefined) return;
+    if (loadedVersion.current === latestVersion) return;
+    loadedVersion.current = latestVersion;
     setDef({ ...data.definition, layout: autoLayout(data.definition) });
-    setBaseVersion(data.workflow.latestVersion);
+    setBaseVersion(latestVersion);
     setViewVersion(null);
     setDirty(false);
-    setSelectedNode(
-      data.definition.nodes.some((n) => n.id === initialNodeRef.current)
-        ? initialNodeRef.current
-        : null,
-    );
-    initialNodeRef.current = null;
-  }, [data]);
+    setSelectedNode((current) => {
+      const wanted = initialNodeRef.current ?? current;
+      initialNodeRef.current = null;
+      return data.definition.nodes.some((n) => n.id === wanted) ? wanted : null;
+    });
+  }, [data, latestVersion]);
 
   const projectId = projects?.[0]?.id;
   const commands = projects?.[0]?.commands ?? [];

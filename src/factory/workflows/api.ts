@@ -201,6 +201,7 @@ export function useWorkflow(id: string | null) {
   return useQuery({
     queryKey: [...KEY, "workflow", id],
     enabled: !!id,
+    refetchOnWindowFocus: false,
     queryFn: () =>
       factoryFetch<{
         workflow: WorkflowSummary;
