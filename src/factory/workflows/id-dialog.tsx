@@ -19,6 +19,7 @@ export function IdDialog({
   takenIds,
   existing,
   templates,
+  initialTemplate,
   busy,
   onSubmit,
   onClose,
@@ -33,13 +34,15 @@ export function IdDialog({
   existing?: { ids: string[]; hint: (id: string) => string };
   /** When set, a template must be picked first (its id is proposed as the new id). */
   templates?: WorkflowSummary[];
+  /** Template already chosen (a card of the template launcher). */
+  initialTemplate?: string;
   busy: boolean;
   onSubmit: (v: { id: string; template: string }) => void;
   onClose: () => void;
 }) {
   const t = useFactoryT();
-  const [template, setTemplate] = React.useState("");
-  const [id, setId] = React.useState(initialId);
+  const [template, setTemplate] = React.useState(initialTemplate ?? "");
+  const [id, setId] = React.useState(initialId || initialTemplate || "");
   const taken = takenIds.includes(id);
   const valid = ID_RE.test(id) && !taken && (!templates || !!template);
   let hint = t("wfIdRule");

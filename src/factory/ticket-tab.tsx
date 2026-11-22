@@ -36,7 +36,7 @@ export function FactoryTicketView({
             >
               #{ticket.issue}
             </a>
-          ) : (
+          ) : ticket.issue === null ? null : (
             `#${ticket.issue}`
           )}{" "}
           {ticket.title}

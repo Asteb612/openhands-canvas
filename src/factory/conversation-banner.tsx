@@ -17,9 +17,10 @@ export function workflowEditorLink(
   ticket: Pick<FactoryTicket, "workflow" | "node">,
 ): string | null {
   if (!ticket.workflow) return null;
-  const q = new URLSearchParams({ wf: ticket.workflow.id });
+  const q = new URLSearchParams();
   if (ticket.node) q.set("node", ticket.node);
-  return `/factory/workflows?${q.toString()}`;
+  const qs = q.toString();
+  return `/factory/workflows/${encodeURIComponent(ticket.workflow.id)}/edit${qs ? `?${qs}` : ""}`;
 }
 
 export function FactoryBannerView({
@@ -53,7 +54,9 @@ export function FactoryBannerView({
             #{ticket.issue}
           </a>
         ) : (
-          <span className="font-medium text-content">#{ticket.issue}</span>
+          <span className="font-medium text-content">
+            {ticket.issue === null ? ticket.title : `#${ticket.issue}`}
+          </span>
         )}
         {ticket.workflow && (
           <span className="text-muted" data-testid="factory-banner-workflow">

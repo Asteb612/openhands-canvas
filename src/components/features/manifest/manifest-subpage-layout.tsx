@@ -12,6 +12,8 @@ export interface SubPageNavItem {
   label: string;
   Icon: LucideIcon;
   testId: string;
+  /** factory: false keeps the link active on sub-routes (a list and its detail pages). */
+  end?: boolean;
 }
 
 interface ManifestSubpageLayoutProps {
@@ -21,13 +23,18 @@ interface ManifestSubpageLayoutProps {
   navTestIdBase: string;
   items: SubPageNavItem[];
   children: React.ReactNode;
+  /**
+   * factory: content wider than the settings column (a kanban board, a graph
+   * editor): no max width, and the content fills the height without scrolling.
+   */
+  fullWidth?: boolean;
 }
 
 function SubPageNavLink({ item }: { item: SubPageNavItem }) {
   return (
     <NavigationLink
       to={item.to}
-      end
+      end={item.end ?? true}
       data-testid={item.testId}
       className={({ isActive }) =>
         cn(
@@ -58,6 +65,7 @@ export function ManifestSubpageLayout({
   navTestIdBase,
   items,
   children,
+  fullWidth = false,
 }: ManifestSubpageLayoutProps) {
   return (
     <div className="flex h-full gap-4 lg:gap-10 lg:pl-10">
@@ -74,8 +82,19 @@ export function ManifestSubpageLayout({
           ))}
         </div>
       </aside>
-      <main className={cn(settingsLikeMainScrollClassName, "h-full")}>
-        <div className="mx-auto flex w-full min-w-0 max-w-200 flex-col gap-6">
+      <main
+        className={cn(
+          settingsLikeMainScrollClassName,
+          "h-full",
+          fullWidth && "overflow-y-hidden pb-4",
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto flex w-full min-w-0 flex-col gap-6",
+            fullWidth ? "h-full min-h-0 gap-4" : "max-w-200",
+          )}
+        >
           <nav
             data-testid={`${navTestIdBase}-mobile`}
             className="lg:hidden flex gap-1 overflow-x-auto border-b border-border pb-2"

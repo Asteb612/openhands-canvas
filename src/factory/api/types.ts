@@ -59,6 +59,30 @@ export interface WorkflowSummary {
   archived: boolean;
   latestVersion: number;
   updatedAt: string;
+  /** Trigger configs of the latest version (cards, detail page). */
+  triggers?: TriggerSummary[];
+  /** Runs on a schedule, without a GitHub issue. */
+  scheduled?: boolean;
+  nextRunAt?: string | null;
+  /** Project workflows: last 30 days and the last run. */
+  activity?: WorkflowActivity | null;
+}
+
+export type TriggerSummary =
+  | { kind: "label"; label: string; projectStatus?: string }
+  | { kind: "project_status"; status: string }
+  | { kind: "comment_command"; command: string }
+  | { kind: "manual" }
+  | { kind: "cron"; cron: string; timezone: string; issueTitle: string }
+  | { kind: "schedule"; cron: string; timezone: string }
+  | { kind: "chain"; workflowId: string; result: string };
+
+export interface WorkflowActivity {
+  runs: number;
+  completed: number;
+  failed: number;
+  avgSeconds: number | null;
+  last: { id: number; state: string; at: string; seconds: number };
 }
 
 export interface WorkflowVersion {
@@ -153,7 +177,7 @@ export interface SubscriptionStatus {
     at: string;
     message: string;
     project: string;
-    issue: number;
+    issue: number | null;
     until: string;
   } | null;
 }
@@ -181,7 +205,8 @@ export interface ReviewData {
   run: {
     id: number;
     project: string;
-    issue: number;
+    kind?: "issue" | "scheduled";
+    issue: number | null;
     title: string;
     prNumber: number | null;
     conversationId: string | null;
@@ -225,7 +250,9 @@ export interface WorkflowStats {
 export interface FactoryRun {
   id: number;
   project: string;
-  issue: number;
+  /** "scheduled": a scheduled workflow's run, without a GitHub issue. */
+  kind?: "issue" | "scheduled";
+  issue: number | null;
   title: string;
   state: string;
   workflow: string;

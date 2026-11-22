@@ -42,7 +42,8 @@ import { RUN_STATES, stateLook } from "./states";
 import { defaultColumns } from "./tickets/columns";
 import {
   Button,
-  FactoryPage,
+  FactoryShell,
+  PageHeading,
   Field,
   Notice,
   Pill,
@@ -224,7 +225,7 @@ function WorkflowsSection({ project }: { project: FactoryProject }) {
                 </td>
                 <td className="py-1.5">
                   <Link
-                    to={`/factory/workflows?wf=${encodeURIComponent(w.id)}`}
+                    to={`/factory/workflows/${encodeURIComponent(w.id)}`}
                     className="text-content hover:underline"
                   >
                     {w.name}
@@ -682,27 +683,29 @@ export default function FactoryProjectPage() {
   const t = useFactoryT();
   const { project } = useSelectedProject();
   return (
-    <FactoryPage
-      title={project ? project.name : t("projectTitle")}
-      badge={
-        project && (
-          <span className="font-mono text-sm text-muted">{project.id}</span>
-        )
-      }
-      width="narrow"
-      testId="factory-project-page"
-    >
-      {!project ? (
-        <StateMessage kind="empty">{t("chooseProject")}</StateMessage>
-      ) : (
-        <>
-          <StateSection project={project} />
-          <WorkflowsSection project={project} />
-          <ColumnsSection key={project.id} project={project} />
-          <NotificationsSection project={project} />
-          <ConfigSection project={project} />
-        </>
-      )}
-    </FactoryPage>
+    <FactoryShell>
+      <div className="flex flex-col gap-5" data-testid="factory-project-page">
+        <PageHeading
+          title={project ? project.name : t("projectTitle")}
+          description={t("projectHint")}
+          badge={
+            project && (
+              <span className="font-mono text-sm text-muted">{project.id}</span>
+            )
+          }
+        />
+        {!project ? (
+          <StateMessage kind="empty">{t("chooseProject")}</StateMessage>
+        ) : (
+          <>
+            <StateSection project={project} />
+            <WorkflowsSection project={project} />
+            <ColumnsSection key={project.id} project={project} />
+            <NotificationsSection project={project} />
+            <ConfigSection project={project} />
+          </>
+        )}
+      </div>
+    </FactoryShell>
   );
 }

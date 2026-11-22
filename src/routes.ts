@@ -22,8 +22,17 @@ export default [
     route("extensions/:extensionName/*", "routes/canvas-extension-page.tsx"),
     route("mcp", "routes/mcp.tsx"),
     // factory: command center pages (software-factory orchestrator API)
+    route("factory", "factory/dashboard-page.tsx"),
     route("factory/tickets", "factory/tickets/tickets-page.tsx"),
-    route("factory/workflows", "factory/workflows/workflows-page.tsx"),
+    route("factory/workflows", "factory/workflows/workflow-list-page.tsx"),
+    route(
+      "factory/workflows/:workflowId",
+      "factory/workflows/workflow-detail-page.tsx",
+    ),
+    route(
+      "factory/workflows/:workflowId/edit",
+      "factory/workflows/workflow-edit-page.tsx",
+    ),
     route("factory/project", "factory/project-page.tsx"),
     // factory: old URLs
     route("tickets", "factory/legacy-redirect.tsx", {

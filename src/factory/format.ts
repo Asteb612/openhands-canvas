@@ -37,3 +37,25 @@ export function since(
   if (h < 48) return t("hours", { n: h });
   return t("days", { n: Math.round(h / 24) });
 }
+
+/** "3 runs in 30 d · 50% succeeded · avg 12 min" (success over finished runs only). */
+export function activityLine(
+  t: T,
+  a: {
+    runs: number;
+    completed: number;
+    failed: number;
+    avgSeconds: number | null;
+  },
+): string {
+  const runs = t(a.runs === 1 ? "activityRuns1" : "activityRuns", {
+    n: a.runs,
+  });
+  const finished = a.completed + a.failed;
+  if (!finished) return runs;
+  return t("activityLine", {
+    runs,
+    ok: Math.round((a.completed / finished) * 100),
+    avg: formatDuration(t, a.avgSeconds),
+  });
+}

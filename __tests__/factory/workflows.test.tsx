@@ -15,8 +15,10 @@ import {
   toFlow,
 } from "#/factory/workflows/graph";
 import { blankDefinition, newNode } from "#/factory/workflows/defaults";
-import { MemoryRouter } from "react-router";
-import WorkflowsPage from "#/factory/workflows/workflows-page";
+import { MemoryRouter, Route, Routes } from "react-router";
+import WorkflowListPage from "#/factory/workflows/workflow-list-page";
+import WorkflowDetailPage from "#/factory/workflows/workflow-detail-page";
+import WorkflowEditPage from "#/factory/workflows/workflow-edit-page";
 
 // The active project (= Canvas backend) is mocked: the tests do not mount the Canvas providers.
 const active = vi.hoisted(() => ({ projectId: "autoriz" as string }));
@@ -219,7 +221,7 @@ const PROJECTS: FactoryProject[] = [
     paused: null,
     backend: { id: "factory-autoriz", path: "/agents/autoriz" },
     defaultWorkflow: "light",
-    enabledWorkflows: ["light"],
+    enabledWorkflows: ["light", "weekly"],
     commands: ["test"],
   },
 ];
@@ -258,9 +260,30 @@ const PROJECT_WORKFLOWS = [
     templateUpdate: { templateId: "light", from: 1, to: 2 },
   }),
   summary({ id: "mine", name: "Le mien", latestVersion: 3 }),
+  summary({
+    id: "weekly",
+    name: "Revue hebdomadaire",
+    scheduled: true,
+    triggers: [
+      { kind: "schedule", cron: "0 8 * * 1", timezone: "Europe/Paris" },
+    ],
+    nextRunAt: "2030-01-07T07:00:00.000Z",
+    activity: {
+      runs: 2,
+      completed: 1,
+      failed: 1,
+      avgSeconds: 600,
+      last: {
+        id: 4,
+        state: "FAILED",
+        at: "2029-12-31T07:00:00.000Z",
+        seconds: 120,
+      },
+    },
+  }),
 ];
 
-describe("WorkflowsPage", () => {
+describe("Workflows pages", () => {
   const calls: {
     url: string;
     method: string;
@@ -312,6 +335,7 @@ describe("WorkflowsPage", () => {
           const [, base, id, action] = detail;
           if (id === "broken") return json({ error: "boom" }, 500);
           if (action === "/reset") return json({ version: 3 });
+          if (action === "/run") return json({ runId: 9 });
           if (method === "PUT") return json({ version: 4 });
           const list = base === "templates" ? TEMPLATES : PROJECT_WORKFLOWS;
           const workflow = list.find((w) => w.id === id);
@@ -356,20 +380,97 @@ describe("WorkflowsPage", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[entry]}>
-          <WorkflowsPage />
+          <Routes>
+            <Route path="/factory/workflows" element={<WorkflowListPage />} />
+            <Route
+              path="/factory/workflows/:workflowId"
+              element={<WorkflowDetailPage />}
+            />
+            <Route
+              path="/factory/workflows/:workflowId/edit"
+              element={<WorkflowEditPage />}
+            />
+          </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );
     return client;
   };
 
-  it("opens the project's default workflow and validates it in the project scope", async () => {
+  it("lists the project's workflows as cards, with trigger, activity and next run", async () => {
     renderPage();
-    expect(await screen.findByTestId("wf-node-review")).toBeInTheDocument();
+    expect(await screen.findByTestId("wf-card-mine")).toBeInTheDocument();
     expect(screen.getByTestId("wf-tab-project")).toHaveAttribute(
       "aria-selected",
       "true",
     );
+    const weekly = screen.getByTestId("wf-card-weekly");
+    expect(weekly).toHaveTextContent("Europe/Paris");
+    expect(weekly).toHaveTextContent("2 runs in 30 d · 50% succeeded");
+    expect(weekly).toHaveTextContent(/Next:/);
+    expect(screen.getByTestId("wf-card-mine")).toHaveTextContent("Disabled");
+    expect(screen.queryByTestId("wf-run-now-mine")).not.toBeInTheDocument();
+    // The templates to start from, below the project's own workflows.
+    expect(
+      await screen.findByTestId("wf-template-card-speckit"),
+    ).toBeInTheDocument();
+  });
+
+  it("runs a scheduled workflow now from its card", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByTestId("wf-run-now-weekly"));
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) =>
+            c.method === "POST" &&
+            c.url === "/factory-api/projects/autoriz/workflows/weekly/run",
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("switches to the template library", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId("wf-card-mine");
+    await user.click(screen.getByTestId("wf-tab-template"));
+    expect(await screen.findByTestId("wf-card-speckit")).toBeInTheDocument();
+    expect(screen.queryByTestId("wf-card-mine")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("wf-create-from-template"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows only templates without an active project", async () => {
+    active.projectId = "";
+    renderPage();
+    expect(await screen.findByTestId("wf-card-light")).toBeInTheDocument();
+    expect(screen.queryByTestId("wf-tab-project")).not.toBeInTheDocument();
+    expect(
+      calls.some((c) => c.url.includes("/projects/autoriz/workflows")),
+    ).toBe(false);
+  });
+
+  it("a workflow's page: trigger, steps, settings, and the editor one click away", async () => {
+    const user = userEvent.setup();
+    renderPage("/factory/workflows/weekly");
+    const trigger = await screen.findByTestId("wf-detail-trigger");
+    expect(trigger).toHaveTextContent("Europe/Paris");
+    expect(trigger).toHaveTextContent("Next run");
+    expect(screen.getByTestId("wf-detail-enabled")).toHaveTextContent(
+      "Enabled",
+    );
+    expect(screen.getByTestId("wf-detail-steps")).toBeInTheDocument();
+    expect(screen.getByTestId("wf-detail-run-now")).toBeInTheDocument();
+    await user.click(screen.getByTestId("wf-detail-edit"));
+    expect(await screen.findByTestId("wf-node-review")).toBeInTheDocument();
+  });
+
+  it("old deep links open the editor on the node; it validates in the project scope", async () => {
+    renderPage("/factory/workflows?wf=light&node=review");
+    expect(await screen.findByTestId("wf-node-id")).toHaveValue("review");
     expect(screen.getByTestId("wf-scope")).toHaveTextContent(
       "Autoriz workflows",
     );
@@ -383,45 +484,9 @@ describe("WorkflowsPage", () => {
     expect(v.headers["X-Factory-Request"]).toBe("1");
   });
 
-  it("switches to the template library", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByTestId("wf-list-mine");
-    await user.click(screen.getByTestId("wf-tab-template"));
-    expect(await screen.findByTestId("wf-list-speckit")).toBeInTheDocument();
-    expect(screen.queryByTestId("wf-list-mine")).not.toBeInTheDocument();
-    expect(await screen.findByTestId("wf-builtin")).toHaveTextContent(
-      "built-in template",
-    );
-    expect(screen.getByTestId("wf-scope")).toHaveTextContent("Templates");
-    expect(
-      screen.queryByTestId("wf-create-from-template"),
-    ).not.toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        calls.some((c) => c.url === "/factory-api/templates/validate"),
-      ).toBe(true),
-    );
-  });
-
-  it("shows only templates without an active project", async () => {
-    active.projectId = "";
-    renderPage("/factory/workflows?wf=speckit&scope=template");
-    expect(await screen.findByTestId("wf-list-light")).toBeInTheDocument();
-    expect(screen.queryByTestId("wf-tab-project")).not.toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        calls.some((c) => c.url === "/factory-api/templates/speckit"),
-      ).toBe(true),
-    );
-    expect(
-      calls.some((c) => c.url.includes("/projects/autoriz/workflows")),
-    ).toBe(false);
-  });
-
   it("keeps unsaved edits and the selection when the same version is refetched", async () => {
     const user = userEvent.setup();
-    const client = renderPage("/factory/workflows?wf=mine&node=review");
+    const client = renderPage("/factory/workflows/mine/edit?node=review");
     expect(await screen.findByTestId("wf-node-id")).toHaveValue("review");
     const label = screen
       .getByTestId("wf-inspector")
@@ -442,8 +507,7 @@ describe("WorkflowsPage", () => {
 
   it("edits a project workflow and saves a new version with the header", async () => {
     const user = userEvent.setup();
-    renderPage();
-    await user.click(await screen.findByTestId("wf-list-mine"));
+    renderPage("/factory/workflows/mine/edit");
     await screen.findByTestId("wf-node-review");
     await user.click(await screen.findByTestId("wf-add-agent"));
     expect(await screen.findByTestId("wf-node-agent_1")).toBeInTheDocument();
@@ -461,19 +525,11 @@ describe("WorkflowsPage", () => {
     ).toContain("agent_1");
   });
 
-  it("creates a project workflow from a template", async () => {
+  it("creates a project workflow from a template card", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByTestId("wf-list-mine");
-    await user.click(screen.getByTestId("wf-create-from-template"));
+    await user.click(await screen.findByTestId("wf-template-card-speckit"));
     const dialog = await screen.findByTestId("wf-dialog");
-    const select = within(dialog).getByTestId("wf-dialog-template");
-    await waitFor(() =>
-      expect(
-        within(select).getByRole("option", { name: /SpecKit/ }),
-      ).toBeInTheDocument(),
-    );
-    await user.selectOptions(select, "speckit");
     expect(within(dialog).getByTestId("wf-dialog-id")).toHaveValue("speckit");
     await user.clear(within(dialog).getByTestId("wf-dialog-id"));
     await user.type(within(dialog).getByTestId("wf-dialog-id"), "my-speckit");
@@ -498,7 +554,7 @@ describe("WorkflowsPage", () => {
   it("refuses an id the project already uses", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByTestId("wf-list-mine");
+    await screen.findByTestId("wf-card-mine");
     await user.click(screen.getByTestId("wf-new"));
     const dialog = await screen.findByTestId("wf-dialog");
     await waitFor(() =>
@@ -514,7 +570,7 @@ describe("WorkflowsPage", () => {
 
   it("offers the template update behind a confirmation", async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage("/factory/workflows/light/edit");
     const notice = await screen.findByTestId("wf-template-update");
     expect(notice).toHaveTextContent("New version of template light (v1 → v2)");
     await user.click(within(notice).getByTestId("wf-apply-template-update"));
@@ -532,7 +588,7 @@ describe("WorkflowsPage", () => {
   });
 
   it("shows the error when the workflow fails to load", async () => {
-    renderPage("/factory/workflows?wf=broken");
+    renderPage("/factory/workflows/broken/edit");
     expect(
       await screen.findByText(/Could not load workflow broken: boom/),
     ).toBeInTheDocument();
@@ -578,7 +634,7 @@ describe("factory conversation UI", () => {
     );
     expect(screen.getByTestId("factory-banner-edit")).toHaveAttribute(
       "href",
-      "/factory/workflows?wf=speckit-full&node=spec_review",
+      "/factory/workflows/speckit-full/edit?node=spec_review",
     );
     await userEvent.click(screen.getByTestId("factory-banner-decide"));
     expect(onDecide).toHaveBeenCalledOnce();

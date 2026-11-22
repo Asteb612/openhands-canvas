@@ -17,21 +17,31 @@ import {
   type WorkflowSummary,
 } from "../api";
 import { useFactoryT } from "../i18n";
-import { Button, useConfirm } from "../ui";
+import { Button, useConfirm, type KebabMenuItem } from "../ui";
 import { IdDialog } from "./id-dialog";
 
-export function WorkflowActions({
-  scope,
-  summary,
-  dirty,
-  onOpen,
-}: {
+export interface WorkflowActionsArgs {
   scope: WorkflowScope;
   summary: WorkflowSummary;
   dirty: boolean;
   /** Opens another workflow of the same scope (the new copy). */
   onOpen: (id: string) => void;
-}) {
+}
+
+/**
+ * The actions on a workflow (duplicate, publish as template, reset, archive) as menu
+ * items, plus their dialogs: the detail page shows them in its kebab menu, the
+ * editor's side panel as buttons.
+ */
+export function useWorkflowActions({
+  scope,
+  summary,
+  dirty,
+  onOpen,
+}: WorkflowActionsArgs): {
+  items: (KebabMenuItem & { testId: string })[];
+  dialogs: React.ReactNode;
+} {
   const t = useFactoryT();
   const { ask, modal } = useConfirm();
   const [dialog, setDialog] = React.useState<"duplicate" | "publish" | null>(
@@ -42,7 +52,7 @@ export function WorkflowActions({
   const archive = useArchiveWorkflow();
   const reset = useResetWorkflow();
   // Archived ones included: an id stays taken.
-  const { data: scopeIds } = useWorkflows(scope, true);
+  const { data: scopeIds } = useWorkflows(dialog ? scope : null, true);
   const { data: templates } = useWorkflows(
     dialog === "publish" ? TEMPLATE_SCOPE : null,
     true,
@@ -50,90 +60,71 @@ export function WorkflowActions({
   const project = scope.kind === "project" ? scope.project : null;
   const id = summary.id;
 
-  const resetTemplate = () =>
-    ask(t("wfResetConfirm", { name: summary.name }), () =>
-      reset.mutate(
-        { scope, id },
-        {
-          onSuccess: (r) =>
-            displaySuccessToast(t("wfResetDone", { v: r.version })),
-          onError: reportFactoryError,
-        },
+  const items: (KebabMenuItem & { testId: string })[] = [
+    {
+      testId: "wf-duplicate",
+      label: t("wfDuplicate"),
+      icon: <Copy className="size-4" aria-hidden />,
+      onClick: () => setDialog("duplicate"),
+    },
+    ...(project
+      ? [
+          {
+            testId: "wf-publish",
+            label: t("publishAsTemplate"),
+            icon: <Upload className="size-4" aria-hidden />,
+            disabled: dirty,
+            onClick: () => setDialog("publish"),
+          },
+        ]
+      : []),
+    ...(scope.kind === "template" && summary.builtin && summary.customised
+      ? [
+          {
+            testId: "wf-reset",
+            label: t("resetTemplate"),
+            icon: <RotateCcw className="size-4" aria-hidden />,
+            disabled: reset.isPending || dirty,
+            onClick: () =>
+              ask(t("wfResetConfirm", { name: summary.name }), () =>
+                reset.mutate(
+                  { scope, id },
+                  {
+                    onSuccess: (r) =>
+                      displaySuccessToast(t("wfResetDone", { v: r.version })),
+                    onError: reportFactoryError,
+                  },
+                ),
+              ),
+          },
+        ]
+      : []),
+    {
+      testId: "wf-archive",
+      label: summary.archived ? t("wfUnarchive") : t("wfArchive"),
+      icon: summary.archived ? (
+        <ArchiveRestore className="size-4" aria-hidden />
+      ) : (
+        <Archive className="size-4" aria-hidden />
       ),
-    );
+      disabled: archive.isPending,
+      onClick: () =>
+        archive.mutate(
+          { scope, id, archived: !summary.archived },
+          {
+            onSuccess: () =>
+              displaySuccessToast(
+                t(summary.archived ? "wfUnarchived" : "wfArchived", { id }),
+              ),
+            // e.g. a project's enabled workflow: the server says why.
+            onError: reportFactoryError,
+          },
+        ),
+    },
+  ];
 
-  return (
-    <div
-      className="flex flex-col gap-2 border-t border-border pt-4"
-      data-testid="wf-actions"
-    >
-      <h3 className="mb-1 text-sm font-medium text-content">
-        {t("wfActions")}
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          testId="wf-duplicate"
-          startContent={<Copy className="size-4" aria-hidden />}
-          onClick={() => setDialog("duplicate")}
-        >
-          {t("wfDuplicate")}
-        </Button>
-        {project && (
-          <Button
-            type="button"
-            variant="secondary"
-            testId="wf-publish"
-            isDisabled={dirty}
-            startContent={<Upload className="size-4" aria-hidden />}
-            onClick={() => setDialog("publish")}
-          >
-            {t("publishAsTemplate")}
-          </Button>
-        )}
-        {scope.kind === "template" && summary.builtin && summary.customised && (
-          <Button
-            type="button"
-            variant="secondary"
-            testId="wf-reset"
-            isDisabled={reset.isPending || dirty}
-            startContent={<RotateCcw className="size-4" aria-hidden />}
-            onClick={resetTemplate}
-          >
-            {t("resetTemplate")}
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="secondary"
-          testId="wf-archive"
-          isDisabled={archive.isPending}
-          startContent={
-            summary.archived ? (
-              <ArchiveRestore className="size-4" aria-hidden />
-            ) : (
-              <Archive className="size-4" aria-hidden />
-            )
-          }
-          onClick={() =>
-            archive.mutate(
-              { scope, id, archived: !summary.archived },
-              {
-                onSuccess: () =>
-                  displaySuccessToast(
-                    t(summary.archived ? "wfUnarchived" : "wfArchived", { id }),
-                  ),
-                // e.g. a project's enabled workflow: the server says why.
-                onError: reportFactoryError,
-              },
-            )
-          }
-        >
-          {summary.archived ? t("wfUnarchive") : t("wfArchive")}
-        </Button>
-      </div>
-      {dirty && <p className="text-xs text-muted">{t("wfSaveFirst")}</p>}
+  const dialogs = (
+    <>
       {dialog === "duplicate" && (
         <IdDialog
           title={t("wfDuplicateTitle", { name: summary.name })}
@@ -186,6 +177,40 @@ export function WorkflowActions({
         />
       )}
       {modal}
+    </>
+  );
+  return { items, dialogs };
+}
+
+/** The actions as buttons (editor side panel, nothing selected). */
+export function WorkflowActions(props: WorkflowActionsArgs) {
+  const t = useFactoryT();
+  const { items, dialogs } = useWorkflowActions(props);
+  return (
+    <div
+      className="flex flex-col gap-2 border-t border-border pt-4"
+      data-testid="wf-actions"
+    >
+      <h3 className="mb-1 text-sm font-medium text-content">
+        {t("wfActions")}
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {items.map((it) => (
+          <Button
+            key={it.testId}
+            type="button"
+            variant="secondary"
+            testId={it.testId}
+            isDisabled={it.disabled}
+            startContent={it.icon}
+            onClick={it.onClick}
+          >
+            {it.label}
+          </Button>
+        ))}
+      </div>
+      {props.dirty && <p className="text-xs text-muted">{t("wfSaveFirst")}</p>}
+      {dialogs}
     </div>
   );
 }
