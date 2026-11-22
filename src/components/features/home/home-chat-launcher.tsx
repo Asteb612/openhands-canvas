@@ -67,6 +67,7 @@ import {
   FactoryTaskTypePicker,
   useFactoryTaskLauncher,
 } from "#/factory/task-type";
+import { useFactoryT } from "#/factory/i18n";
 
 // How long a create may run before the "Creating conversation…" toast appears.
 const CREATING_TOAST_DELAY_MS = 600;
@@ -111,6 +112,7 @@ export function HomeChatLauncher() {
       lastUsedWorkspaceMode,
     );
   const factoryTask = useFactoryTaskLauncher(); // factory:
+  const factoryT = useFactoryT(); // factory:
   const isRecommendedAutomationsDismissed =
     useHomeRecommendedAutomationsDismissed();
   const [selectedPlugins, setSelectedPlugins] = useState<PluginSpec[]>([]);
@@ -539,8 +541,7 @@ export function HomeChatLauncher() {
               isAutomateMode
                 ? t(I18nKey.HOME$AUTOMATE_PROMPT_PLACEHOLDER)
                 : factoryTask.choice
-                  ? // factory:
-                    "Décris la tâche : la 1re ligne devient le titre de l'issue" // eslint-disable-line i18next/no-literal-string -- factory UI
+                  ? factoryT("composerPlaceholder") // factory:
                   : t(I18nKey.SUGGESTIONS$WHAT_TO_BUILD)
             }
           />

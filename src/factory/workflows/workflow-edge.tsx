@@ -39,18 +39,17 @@ function RoutedEdgeView({
         style={{
           ...style,
           strokeWidth: selected ? 2.5 : 1.5,
-          ...(problem ? { stroke: "var(--color-status-error, #ef4444)" } : {}),
+          ...(problem ? { stroke: "var(--color-danger, #ef4444)" } : {}),
         }}
       />
       {label ? (
         <EdgeLabelRenderer>
           <div
             className={cn(
-              "pointer-events-none absolute rounded border bg-surface px-1 text-2xs text-muted",
-              problem ? "border-status-error" : "border-border",
-              selected && "text-foreground",
+              "pointer-events-none absolute rounded border bg-base-secondary px-1 text-xs text-muted",
+              problem ? "border-danger" : "border-border",
+              selected && "text-content",
             )}
-
             style={{
               transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)`,
             }}

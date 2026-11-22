@@ -1,16 +1,23 @@
-/* eslint-disable i18next/no-literal-string -- factory UI is French-only */
 import React from "react";
-import toast from "react-hot-toast";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Workflow as WorkflowIcon } from "lucide-react";
+import {
+  formControlBorderClassName,
+  formControlSurfaceClassName,
+  formControlTransitionClassName,
+} from "#/utils/form-control-classes";
+import { dropdownMenuRowClassName } from "#/utils/dropdown-classes";
+import { NEW_CONVERSATION_DROPDOWN_SURFACE } from "#/components/features/conversation-panel/new-conversation-dropdown-styles";
 import { useNavigation } from "#/context/navigation-context";
 import { cn } from "#/utils/utils";
+import { displaySuccessToast } from "#/utils/custom-toast-handlers";
 import {
+  reportFactoryError,
   useCreateTicket,
-  useProjects,
   useWorkflows,
   type FactoryProject,
   type WorkflowSummary,
-} from "./workflows/api";
+} from "./api";
+import { useFactoryT } from "./i18n";
 import { useSelectedProject } from "./project-context";
 
 /** A factory task type: which project, which workflow. `null` = plain chat. */
@@ -25,35 +32,27 @@ export interface FactoryTaskOptions {
 }
 
 /**
- * Task types offered when starting something new: the workflows enabled on each
- * active project (all non-archived ones when a project enabled none). Empty when the
- * factory API is unreachable (another backend, or no orchestrator): the picker hides.
+ * Task types offered when starting something new: the active project's enabled
+ * workflows (its own copies), default first. Empty without an active project or
+ * without the factory API (the picker hides).
  */
 export function useFactoryTaskOptions(): FactoryTaskOptions[] {
-  const { data: projects } = useProjects();
-  const { data: workflows } = useWorkflows();
-  const { projectId } = useSelectedProject();
+  const { project } = useSelectedProject();
+  const { data: workflows } = useWorkflows(
+    project ? { kind: "project", project: project.id } : null,
+  );
   return React.useMemo(() => {
-    if (!projects || !workflows) return [];
-    // Inactive projects are listed greyed out (nothing would run there); the project
-    // picked in the sidebar narrows the list to itself.
-    return [...projects]
-      .filter((p) => !projectId || p.id === projectId)
-      .sort((a, b) => Number(b.active) - Number(a.active))
-      .map((project) => {
-        const enabled = project.enabledWorkflows.length
-          ? workflows.filter((w) => project.enabledWorkflows.includes(w.id))
-          : workflows;
-        // The project's default first.
-        const sorted = [...enabled].sort(
-          (a, b) =>
-            Number(b.id === project.defaultWorkflow) -
-            Number(a.id === project.defaultWorkflow),
-        );
-        return { project, workflows: sorted };
-      })
-      .filter((o) => o.workflows.length > 0);
-  }, [projects, workflows, projectId]);
+    if (!project || !workflows) return [];
+    const enabled = workflows.filter((w) =>
+      project.enabledWorkflows.includes(w.id),
+    );
+    const sorted = [...enabled].sort(
+      (a, b) =>
+        Number(b.id === project.defaultWorkflow) -
+        Number(a.id === project.defaultWorkflow),
+    );
+    return sorted.length ? [{ project, workflows: sorted }] : [];
+  }, [project, workflows]);
 }
 
 /** First line = issue title (shortened), the whole text = issue body. */
@@ -76,13 +75,14 @@ export function useFactoryTaskLauncher() {
   const options = useFactoryTaskOptions();
   const { mutateAsync, isPending } = useCreateTicket();
   const { navigate } = useNavigation();
+  const t = useFactoryT();
 
   // A choice whose workflow/project disappeared (archived, other backend) is dropped.
   const valid =
     choice &&
     options.some(
       (o) =>
-        o.project.active &&
+        o.project.status === "ok" &&
         o.project.id === choice.projectId &&
         o.workflows.some((w) => w.id === choice.workflowId),
     )
@@ -95,25 +95,21 @@ export function useFactoryTaskLauncher() {
   ): Promise<boolean> => {
     if (!valid) return false;
     if (hasAttachments) {
-      toast.error(
-        "Les pièces jointes ne passent pas par la factory : mets un lien dans le texte.",
-      );
+      reportFactoryError(t("noAttachments"));
       return false;
     }
     const { title, body } = splitTask(message);
     if (title.length < 3) {
-      toast.error("La première ligne (titre de l'issue) est trop courte.");
+      reportFactoryError(t("titleTooShort"));
       return false;
     }
     try {
       const r = await mutateAsync({ ...valid, title, body });
-      toast.success(
-        `Ticket #${r.issue} créé. La conversation s'ouvre dès que la factory le prend en charge.`,
-      );
-      navigate(`/tickets?run=${r.runId}`);
+      displaySuccessToast(t("ticketCreated", { issue: r.issue }));
+      navigate(`/factory/tickets?run=${r.runId}`);
       return true;
     } catch (e) {
-      toast.error((e as Error).message);
+      reportFactoryError(e);
       return false;
     }
   };
@@ -122,17 +118,19 @@ export function useFactoryTaskLauncher() {
 }
 
 function choiceLabel(
+  t: ReturnType<typeof useFactoryT>,
   choice: FactoryTaskChoice | null,
   options: FactoryTaskOptions[],
 ): string {
-  if (!choice) return "Chat libre";
+  if (!choice) return t("freeChat");
   const o = options.find((x) => x.project.id === choice.projectId);
-  const w = o?.workflows.find((x) => x.id === choice.workflowId);
-  const name = w?.name ?? choice.workflowId;
-  return options.length > 1 ? `${name} · ${choice.projectId}` : name;
+  return (
+    o?.workflows.find((x) => x.id === choice.workflowId)?.name ??
+    choice.workflowId
+  );
 }
 
-/** "Type de tâche" dropdown: plain chat, or one of the factory workflows. */
+/** Composer chip (same look as the plugin picker): plain chat, or a workflow of the active project. */
 export function FactoryTaskTypePicker({
   choice,
   options,
@@ -144,6 +142,7 @@ export function FactoryTaskTypePicker({
   onChange: (c: FactoryTaskChoice | null) => void;
   disabled?: boolean;
 }) {
+  const t = useFactoryT();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -179,33 +178,41 @@ export function FactoryTaskTypePicker({
         onClick={() => setOpen((o) => !o)}
         data-testid="factory-task-type"
         className={cn(
-          "flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50",
-          choice
-            ? "border-contrast font-semibold text-foreground"
-            : "border-border text-muted hover:text-foreground",
+          "flex flex-row items-center gap-2 rounded-full px-2.5 py-1 text-sm",
+          formControlBorderClassName,
+          formControlSurfaceClassName,
+          formControlTransitionClassName,
+          choice ? "text-content" : "text-contrast",
+          disabled
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer hover:bg-surface-raised",
         )}
       >
-        <span aria-hidden>🏭</span>
-        {choiceLabel(choice, options)}
+        <WorkflowIcon className="size-4 shrink-0" aria-hidden />
+        {choiceLabel(t, choice, options)}
         <ChevronDown className="size-3" aria-hidden />
       </button>
       {open && (
         <div
           role="menu"
           data-testid="factory-task-type-menu"
-          className="absolute bottom-full left-0 z-50 mb-1 max-h-96 w-80 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg"
+          className={cn(
+            NEW_CONVERSATION_DROPDOWN_SURFACE,
+            "absolute bottom-full left-0 mb-1 max-h-96 w-80 overflow-y-auto",
+          )}
         >
           <TaskItem
             selected={!choice}
-            title="Chat libre"
-            description="Une conversation normale, sans ticket ni workflow."
+            title={t("freeChat")}
+            description={t("freeChatHint")}
             onClick={() => pick(null)}
           />
           {options.map((o) => (
             <div key={o.project.id}>
-              <div className="px-2 pt-2 pb-1 text-3xs uppercase tracking-wide text-muted">
-                Ticket factory · {o.project.repo}
-                {!o.project.active && " (projet inactif)"}
+              <div className="px-2 pt-2 pb-1 text-xs text-muted">
+                {t("factoryTicketOf", {
+                  repo: o.project.repo ?? o.project.name,
+                })}
               </div>
               {o.workflows.map((w) => (
                 <TaskItem
@@ -213,11 +220,11 @@ export function FactoryTaskTypePicker({
                   selected={isSel(o.project.id, w.id)}
                   title={
                     w.id === o.project.defaultWorkflow
-                      ? `${w.name} (par défaut)`
+                      ? t("byDefault", { name: w.name })
                       : w.name
                   }
                   description={w.description}
-                  disabled={!o.project.active}
+                  disabled={o.project.status !== "ok"}
                   onClick={() =>
                     pick({ projectId: o.project.id, workflowId: w.id })
                   }
@@ -226,9 +233,8 @@ export function FactoryTaskTypePicker({
               ))}
             </div>
           ))}
-          <p className="px-2 pt-2 pb-1 text-3xs text-muted">
-            Ticket factory : le message devient une issue GitHub (1re ligne =
-            titre) et le workflow démarre dessus.
+          <p className="px-2 pt-2 pb-1 text-xs text-muted">
+            {t("factoryTicketHint")}
           </p>
         </div>
       )}
@@ -259,18 +265,16 @@ function TaskItem({
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
-      className="flex w-full cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+      className={cn(dropdownMenuRowClassName, "items-start")}
     >
       <Check
-        className={cn("mt-0.5 size-3 shrink-0", !selected && "invisible")}
+        className={cn("mt-0.5 size-3.5 shrink-0", !selected && "invisible")}
         aria-hidden
       />
       <span className="flex min-w-0 flex-col">
-        <span className="text-xs text-foreground">{title}</span>
+        <span className="text-sm text-content">{title}</span>
         {description && (
-          <span className="line-clamp-2 text-3xs text-muted">
-            {description}
-          </span>
+          <span className="line-clamp-2 text-xs text-muted">{description}</span>
         )}
       </span>
     </button>

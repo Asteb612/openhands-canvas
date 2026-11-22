@@ -6,7 +6,7 @@ import type {
   ValidationResponse,
   WorkflowDefinition,
   WorkflowNode,
-} from "./api";
+} from "../api";
 
 export const NODE_WIDTH = 240;
 export const NODE_HEIGHT = 96;

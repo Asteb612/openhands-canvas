@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import AgentServerConversationService from "#/api/conversation-service/agent-server-conversation-service.api";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
+import { factoryKeys } from "./api";
+import { useConversationRun } from "./run-status";
 
 /**
  * Factory ticket card. Written by the software-factory orchestrator at
@@ -20,17 +22,6 @@ export interface FactoryOutcome {
   kind: "approve" | "changes" | "reject" | "other";
   requireComment: boolean;
 }
-
-/** Choices of a card written before outcomes existed. */
-export const DEFAULT_OUTCOMES: FactoryOutcome[] = [
-  { id: "approve", label: "Valider", kind: "approve", requireComment: false },
-  {
-    id: "changes",
-    label: "Demander des changements",
-    kind: "changes",
-    requireComment: true,
-  },
-];
 
 export interface FactoryTicket {
   version: 1;
@@ -76,14 +67,19 @@ export function parseFactoryTicket(raw: string): FactoryTicket | null {
   }
 }
 
+/**
+ * The ticket card of the open conversation. Only read for conversations the
+ * orchestrator knows as a ticket of the active project (no polling elsewhere).
+ */
 export function useFactoryTicket() {
   const { conversationId } = useOptionalConversationId();
   const { data: conversation } = useActiveConversation();
+  const run = useConversationRun(conversationId ?? undefined);
   const workingDir = conversation?.workspace?.working_dir ?? null;
 
   return useQuery({
-    queryKey: ["factory-ticket", conversationId, workingDir],
-    enabled: !!conversationId && !!workingDir,
+    queryKey: [...factoryKeys.ticket(conversationId ?? undefined), workingDir],
+    enabled: !!conversationId && !!workingDir && !!run,
     refetchInterval: POLL_MS,
     retry: false,
     meta: { disableToast: true },

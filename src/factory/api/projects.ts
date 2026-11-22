@@ -1,0 +1,95 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { factoryFetch, factoryKeys, QUIET } from "./client";
+import type { FactoryProject, FactoryStatus, ProjectSettings } from "./types";
+
+const enc = encodeURIComponent;
+
+/** Every project the orchestrator knows (running, inactive or in error). Quiet: shown everywhere. */
+export function useProjects() {
+  return useQuery({
+    queryKey: factoryKeys.projects(),
+    queryFn: () =>
+      factoryFetch<{ projects: FactoryProject[] }>("/projects").then(
+        (r) => r.projects,
+      ),
+    retry: false,
+    staleTime: 30_000,
+    meta: QUIET,
+  });
+}
+
+export function useFactoryStatus() {
+  return useQuery({
+    queryKey: factoryKeys.status(),
+    queryFn: () => factoryFetch<FactoryStatus>("/status"),
+    refetchInterval: 30_000,
+    retry: false,
+    meta: QUIET,
+  });
+}
+
+function useInvalidateProjects() {
+  const qc = useQueryClient();
+  return () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: factoryKeys.projects() }),
+      qc.invalidateQueries({ queryKey: factoryKeys.status() }),
+    ]);
+}
+
+export function useSetProjectWorkflows() {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (v: {
+      projectId: string;
+      default: string;
+      enabled: string[];
+    }) =>
+      factoryFetch<{ ok: true }>(`/projects/${enc(v.projectId)}/workflows`, {
+        method: "PUT",
+        body: { default: v.default, enabled: v.enabled },
+      }),
+    onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
+
+export function useSaveProjectSettings() {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (v: { projectId: string; settings: ProjectSettings }) =>
+      factoryFetch<{ ok: true; settings: ProjectSettings }>(
+        `/projects/${enc(v.projectId)}/settings`,
+        { method: "PUT", body: { settings: v.settings } },
+      ),
+    onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
+
+export function useSetProjectPause() {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (v: { projectId: string; paused: boolean; reason?: string }) =>
+      factoryFetch<{ ok: true }>(`/projects/${enc(v.projectId)}/pause`, {
+        method: "PUT",
+        body: { paused: v.paused, reason: v.reason ?? "" },
+      }),
+    onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
+
+/** Global pause of the whole factory. */
+export function useSetControl() {
+  const invalidate = useInvalidateProjects();
+  return useMutation({
+    mutationFn: (v: { paused: boolean; reason?: string }) =>
+      factoryFetch<{ control: FactoryStatus["control"] }>("/control", {
+        method: "PUT",
+        body: v,
+      }),
+    onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
