@@ -27,6 +27,7 @@ import {
   Button,
   FactoryPage,
   Field,
+  Notice,
   Pill,
   StateMessage,
   fieldClassName,
@@ -332,7 +333,7 @@ export default function TicketsPage() {
   const [params, setParams] = useSearchParams();
   const highlight = Number(params.get("run") ?? 0);
   const reviewId = Number(params.get("review") ?? 0) || null;
-  const { projectId, project } = useSelectedProject();
+  const { projectId, project, projects } = useSelectedProject();
   // Every project when asked, or when no project is active.
   const allProjects = params.get("scope") === "all" || !projectId;
   const { data: runs, error, isLoading } = useRuns();
@@ -441,6 +442,11 @@ export default function TicketsPage() {
       }
     >
       <FactoryStatusBar />
+      {!projectId && projects.length > 0 && (
+        <Notice tone="info" testId="tickets-no-project">
+          {t("notProjectBackend")}
+        </Notice>
+      )}
       {form === "new" && (
         <div className="max-w-xl">
           <NewTicketForm onDone={() => setForm(null)} />

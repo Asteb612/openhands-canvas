@@ -106,6 +106,10 @@ const BASE = {
     "La première ligne (titre de l'issue) est trop courte.",
     "The first line (issue title) is too short.",
   ],
+  notProjectBackend: [
+    "Le backend actif n'est pas un projet factory : tous les projets sont affichés. Choisis un projet dans le sélecteur de backend, en bas de la barre latérale.",
+    "The active backend is not a factory project: every project is shown. Pick a project in the backend selector at the bottom of the sidebar.",
+  ],
   noActiveProject: [
     "Aucun projet actif : impossible de créer un ticket.",
     "No running project: cannot create a ticket.",

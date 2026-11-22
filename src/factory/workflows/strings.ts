@@ -7,8 +7,8 @@ export const WORKFLOW_STRINGS = {
   wfSelect: ["Sélectionne un workflow.", "Pick a workflow."],
   wfNoWorkflows: ["Aucun workflow ici.", "No workflow here."],
   wfTemplatesOnly: [
-    "Aucun projet actif : seuls les modèles sont affichés.",
-    "No active project: only templates are shown.",
+    "Le backend actif n'est pas un projet factory : seuls les modèles sont affichés. Choisis un projet dans le sélecteur de backend.",
+    "The active backend is not a factory project: only templates are shown. Pick a project in the backend selector.",
   ],
   wfShowArchived: ["Afficher les archivés", "Show archived"],
   wfArchivedTag: ["archivé", "archived"],
