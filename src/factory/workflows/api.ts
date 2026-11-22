@@ -118,6 +118,16 @@ export interface FactoryRun {
   prNumber: number | null;
   conversationId: string | null;
   updatedAt: string;
+  workflowName?: string;
+  nodeLabel?: string | null;
+  nodeType?: string | null;
+  repo?: string | null;
+  priority?: number;
+  labels?: string[];
+  branch?: string | null;
+  failureMessage?: string | null;
+  nodeEnteredAt?: string | null;
+  createdAt?: string;
 }
 
 export class FactoryApiError extends Error {
@@ -347,5 +357,24 @@ export function useStartRun() {
     mutationFn: (v: { projectId: string; issue: number; workflowId: string }) =>
       factoryFetch<{ runId: number }>("/runs", { method: "POST", body: v }),
     onSuccess: invalidate,
+  });
+}
+
+/** New task typed in Canvas: the orchestrator creates the GitHub issue and starts the workflow. */
+export function useCreateTicket() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (v: {
+      projectId: string;
+      title: string;
+      body: string;
+      workflowId: string;
+    }) =>
+      factoryFetch<{ issue: number; runId: number }>("/tickets", {
+        method: "POST",
+        body: v,
+      }),
+    onSuccess: invalidate,
+    meta: { disableToast: true },
   });
 }
