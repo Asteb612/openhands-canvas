@@ -21,4 +21,5 @@ export const CONVERSATION_TAB_LABEL_KEYS: Record<ConversationTab, I18nKey> = {
   usage: I18nKey.COMMON$USAGE,
   project: I18nKey.PROJECTS$PROJECT_TAB,
   ticket: I18nKey.FACTORY$TICKET, // factory: Ticket tab
+  workflow: I18nKey.FACTORY$WORKFLOW, // factory: workflow session
 };

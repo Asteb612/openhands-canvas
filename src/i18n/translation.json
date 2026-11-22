@@ -47176,5 +47176,23 @@
     "uk": "Тікет",
     "ca": "Tiquet",
     "id": "Tiket"
+  },
+  "FACTORY$WORKFLOW": {
+    "en": "Workflow",
+    "ja": "ワークフロー",
+    "zh-CN": "工作流",
+    "zh-TW": "工作流程",
+    "ko-KR": "워크플로",
+    "no": "Arbeidsflyt",
+    "it": "Workflow",
+    "pt": "Fluxo de trabalho",
+    "es": "Flujo de trabajo",
+    "ar": "سير العمل",
+    "fr": "Workflow",
+    "tr": "İş akışı",
+    "de": "Workflow",
+    "uk": "Робочий процес",
+    "ca": "Flux de treball",
+    "id": "Alur kerja"
   }
 }

@@ -14,6 +14,7 @@ import {
   ListTodo,
   SquareChevronRight,
   Ticket,
+  Workflow,
 } from "lucide-react";
 import { LuFileDiff } from "react-icons/lu";
 import DocumentIcon from "#/icons/document.svg?react";
@@ -39,6 +40,7 @@ import { AgentState } from "#/types/agent-state";
 import { Typography } from "#/ui/typography";
 import { mobileTopBarIconClassName } from "#/utils/mobile-top-bar-icon-button-classes";
 import { useFactoryTicket } from "#/factory/ticket"; // factory: Ticket tab
+import { useWorkflowSessionId } from "#/factory/workflows/workflow-session"; // factory: workflow session
 
 // factory: no Build button (the orchestrator drives the steps).
 const FACTORY_DISABLE_BUILD = true;
@@ -62,6 +64,7 @@ export function ConversationTabs({
   const { hasTaskList } = useTaskList();
   const projectId = useConversationProjectId();
   const { data: factoryTicket } = useFactoryTicket(); // factory: Ticket tab
+  const workflowSession = useWorkflowSessionId(); // factory: workflow session
   const { backend } = useActiveBackend();
 
   const { handleBuildPlanClick } = useHandleBuildPlanClick();
@@ -187,6 +190,19 @@ export function ConversationTabs({
       tooltipContent: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
       tooltipAriaLabel: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
       label: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
+    });
+  }
+
+  // factory: the workflow being written with the agent, first.
+  if (workflowSession) {
+    tabs.unshift({
+      tabValue: "workflow",
+      isActive: isTabActive("workflow"),
+      icon: Workflow,
+      onClick: () => selectTab("workflow"),
+      tooltipContent: t(CONVERSATION_TAB_LABEL_KEYS.workflow),
+      tooltipAriaLabel: t(CONVERSATION_TAB_LABEL_KEYS.workflow),
+      label: t(CONVERSATION_TAB_LABEL_KEYS.workflow),
     });
   }
 

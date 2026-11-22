@@ -3,7 +3,13 @@ import { ReactFlow, ReactFlowProvider, Background } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useColorTheme } from "#/hooks/use-color-theme";
 import { COLOR_THEMES } from "#/themes/color-themes";
-import { useWorkflowVersion, type WorkflowScope } from "../api";
+import {
+  useWorkflowVersion,
+  type Problem,
+  type ValidationResponse,
+  type WorkflowDefinition,
+  type WorkflowScope,
+} from "../api";
 import { useFactoryT } from "../i18n";
 import { StateMessage } from "../ui";
 import { toFlow } from "./graph";
@@ -43,11 +49,34 @@ export function WorkflowPreview({
     version,
   );
   const t = useFactoryT();
+  if (isLoading) return <StateMessage kind="loading" />;
+  if (error || !def)
+    return <p className="text-sm text-muted">{t("graphUnavailable")}</p>;
+  return (
+    <DefinitionGraph def={def} currentNode={currentNode} height={height} />
+  );
+}
+
+/** A workflow definition drawn read-only (a saved version, or a draft). */
+export function DefinitionGraph({
+  def,
+  currentNode,
+  ports,
+  problems,
+  height = 260,
+}: {
+  def: WorkflowDefinition;
+  currentNode?: string | null;
+  ports?: ValidationResponse["ports"];
+  problems?: Problem[];
+  height?: number;
+}) {
   const colorMode = COLOR_THEMES[useColorTheme()].appearance;
   const flow = React.useMemo(() => {
-    if (!def) return null;
     const f = toFlow(def, {
       readOnly: true,
+      ports,
+      problems,
       runsByNode: currentNode ? new Map([[currentNode, 1]]) : undefined,
     });
     return {
@@ -59,11 +88,9 @@ export function WorkflowPreview({
       })),
       edges: f.edges,
     };
-  }, [def, currentNode]);
-
-  if (isLoading) return <StateMessage kind="loading" />;
-  if (error || !flow)
-    return <p className="text-sm text-muted">{t("graphUnavailable")}</p>;
+  }, [def, currentNode, ports, problems]);
+  // A changed set of nodes (a draft the agent rewrote) is framed again.
+  const shape = def.nodes.map((n) => n.id).join(",");
   return (
     <div
       className="w-full overflow-hidden rounded-lg border border-border"
@@ -71,7 +98,7 @@ export function WorkflowPreview({
       style={{ height }}
       data-testid="factory-workflow-preview"
     >
-      <ReactFlowProvider>
+      <ReactFlowProvider key={shape}>
         <ReactFlow
           nodes={flow.nodes}
           edges={flow.edges}
@@ -92,13 +119,12 @@ export function WorkflowPreview({
           // Re-centre once nodes are measured: fitView at mount runs before the
           // node sizes exist when the preview opens inside a just-expanded panel.
           onInit={(instance) => {
-            if (!currentNode) return;
             window.setTimeout(() => {
-              void instance.fitView({
-                nodes: [{ id: currentNode }],
-                maxZoom: 0.9,
-                padding: 1.5,
-              });
+              void instance.fitView(
+                currentNode
+                  ? { nodes: [{ id: currentNode }], maxZoom: 0.9, padding: 1.5 }
+                  : { padding: 0.1 },
+              );
             }, 50);
           }}
         >

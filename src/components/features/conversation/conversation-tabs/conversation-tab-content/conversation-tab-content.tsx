@@ -21,6 +21,9 @@ const UsageTab = lazy(() => import("#/routes/usage-tab"));
 const ProjectTab = lazy(() => import("#/routes/project-tab"));
 // factory: Ticket tab
 const FactoryTicketTab = lazy(() => import("#/factory/ticket-tab"));
+const FactoryWorkflowTab = lazy(
+  () => import("#/factory/workflows/workflow-session-tab"),
+);
 const Terminal = lazy(() => import("#/components/features/terminal/terminal"));
 
 const TAB_CONFIG = {
@@ -33,6 +36,7 @@ const TAB_CONFIG = {
   usage: { component: UsageTab },
   project: { component: ProjectTab },
   ticket: { component: FactoryTicketTab }, // factory: Ticket tab
+  workflow: { component: FactoryWorkflowTab }, // factory: workflow session
 };
 
 export function ConversationTabContent() {

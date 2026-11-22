@@ -40,6 +40,14 @@ vi.mock("#/factory/project-context", async (orig) => {
   };
 });
 
+// The open conversation (its tags say whether it writes a workflow).
+const conversation = vi.hoisted(() => ({
+  tags: null as Record<string, string> | null,
+}));
+vi.mock("#/hooks/query/use-active-conversation", () => ({
+  useActiveConversation: () => ({ data: { tags: conversation.tags } }),
+}));
+
 const def: WorkflowDefinition = {
   schema: 1,
   name: "Léger",
@@ -353,6 +361,29 @@ describe("Workflows pages", () => {
             definition: def,
           });
         }
+        if (path === "/factory-api/projects/autoriz/workflow-sessions")
+          return json({ session: "abcdefabcdef", conversationId: "conv-9" });
+        if (
+          path ===
+          "/factory-api/projects/autoriz/workflow-sessions/abcdefabcdef/save"
+        )
+          return json({ scope: "autoriz", id: "friday", version: 1 });
+        if (
+          path ===
+          "/factory-api/projects/autoriz/workflow-sessions/abcdefabcdef"
+        )
+          return json({
+            session: "abcdefabcdef",
+            scope: "autoriz",
+            workflowId: null,
+            baseVersion: null,
+            createdBy: "dev",
+            createdAt: "",
+            definition: def,
+            ok: true,
+            problems: [],
+            ports: {},
+          });
         if (path.endsWith("/node-types"))
           return json({
             catalog: [
@@ -585,6 +616,67 @@ describe("Workflows pages", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it("creates a workflow with the agent: a conversation starts on the project's backend", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByTestId("wf-create-with-agent"));
+    const dialog = await screen.findByTestId("wf-agent-dialog");
+    expect(within(dialog).getByTestId("wf-agent-start")).toBeDisabled();
+    await user.type(
+      within(dialog).getByTestId("wf-agent-prompt"),
+      "chaque vendredi, une revue",
+    );
+    await user.click(within(dialog).getByTestId("wf-agent-start"));
+    await waitFor(() =>
+      expect(
+        calls.find(
+          (c) => c.url === "/factory-api/projects/autoriz/workflow-sessions",
+        )?.body,
+      ).toEqual({ scope: "autoriz", prompt: "chaque vendredi, une revue" }),
+    );
+  });
+
+  it("the Workflow tab shows the agent's draft and the owner saves it as a new workflow", async () => {
+    conversation.tags = {
+      factoryproject: "autoriz",
+      factoryworkflowsession: "abcdefabcdef",
+    };
+    try {
+      const user = userEvent.setup();
+      const { default: WorkflowSessionTab } =
+        await import("#/factory/workflows/workflow-session-tab");
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter>
+            <WorkflowSessionTab />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      expect(
+        await screen.findByTestId("wf-session-validity"),
+      ).toHaveTextContent("valid");
+      expect(
+        screen.getByTestId("factory-workflow-preview"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("wf-session-save")).toBeDisabled(); // an id first
+      await user.type(screen.getByTestId("wf-session-id"), "friday");
+      await user.click(screen.getByTestId("wf-session-save"));
+      await waitFor(() =>
+        expect(
+          calls.find((c) =>
+            c.url.endsWith("/workflow-sessions/abcdefabcdef/save"),
+          )?.body,
+        ).toEqual({ id: "friday" }),
+      );
+    } finally {
+      conversation.tags = null;
+    }
   });
 
   it("shows the error when the workflow fails to load", async () => {

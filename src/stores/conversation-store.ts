@@ -14,7 +14,8 @@ export type ConversationTab =
   | "tasklist"
   | "usage"
   | "project"
-  | "ticket"; // factory: Ticket tab
+  | "ticket" // factory: Ticket tab
+  | "workflow"; // factory: workflow written with the agent
 
 export type ConversationMode = "code" | "plan";
 
