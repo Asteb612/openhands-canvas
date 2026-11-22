@@ -22,7 +22,6 @@ const BASE = {
   none: ["Rien", "Nothing"],
   allProjects: ["Tous les projets", "All projects"],
   project: ["Projet", "Project"],
-  noProject: ["Aucun projet", "No project"],
   chooseProject: [
     "Choisis un projet dans la barre latérale.",
     "Pick a project in the sidebar.",

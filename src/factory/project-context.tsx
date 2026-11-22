@@ -6,7 +6,6 @@
  * switching the backend elsewhere in Canvas changes the project.
  */
 import React from "react";
-import { FolderKanban } from "lucide-react";
 import {
   useActiveBackend,
   useActiveBackendContext,
@@ -19,11 +18,7 @@ import {
 } from "#/api/backend-registry/active-store";
 import { BACKEND_QUERY_PARAM } from "#/api/backend-registry/url-selection";
 import type { Backend } from "#/api/backend-registry/types";
-import { cn } from "#/utils/utils";
-import { StyledTooltip } from "#/components/shared/buttons/styled-tooltip";
 import { useProjects, type FactoryProject } from "./api";
-import { useFactoryT } from "./i18n";
-import { selectClassName } from "./ui";
 
 const PREFIX = "factory-";
 
@@ -138,61 +133,11 @@ export function useSelectedProject(): {
   };
 }
 
-function projectSuffix(
-  t: ReturnType<typeof useFactoryT>,
-  p: FactoryProject,
-): string {
-  if (p.status === "error") return ` (${t("inError")})`;
-  if (p.status === "inactive") return ` (${t("inactive")})`;
-  if (p.paused) return ` (${t("paused")})`;
-  return "";
-}
-
-/** Sidebar control: the active project (= backend). Hidden without the factory API. */
-export function FactoryProjectSelector({ collapsed }: { collapsed?: boolean }) {
+/**
+ * Headless: registers the projects' backends. Choosing the project is Canvas' own
+ * backend selector (project = backend), so the factory adds no second selector.
+ */
+export function FactoryProjectSync(): null {
   useSyncProjectBackends();
-  const t = useFactoryT();
-  const { projectId, project, projects, setProjectId } = useSelectedProject();
-  if (projects.length === 0) return null;
-  if (collapsed)
-    return (
-      <StyledTooltip
-        content={project ? project.name : t("noProject")}
-        placement="right"
-      >
-        <span
-          className="mx-auto flex size-8 items-center justify-center rounded-md bg-surface-raised text-xs font-medium text-content"
-          data-testid="factory-project-badge"
-          aria-label={project ? project.name : t("noProject")}
-        >
-          {project ? (
-            project.name.slice(0, 2).toUpperCase()
-          ) : (
-            <FolderKanban className="size-4" aria-hidden />
-          )}
-        </span>
-      </StyledTooltip>
-    );
-  return (
-    <label
-      className="mx-2 mt-1 flex items-center gap-2"
-      data-testid="factory-project-selector"
-    >
-      <FolderKanban className="size-4 shrink-0 text-muted" aria-hidden />
-      <span className="sr-only">{t("project")}</span>
-      <select
-        value={projectId}
-        onChange={(e) => setProjectId(e.target.value)}
-        className={cn(selectClassName, "h-8 min-h-8 px-2 text-sm")}
-      >
-        {!projectId && <option value="">{t("noProject")}</option>}
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {projectSuffix(t, p)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+  return null;
 }
