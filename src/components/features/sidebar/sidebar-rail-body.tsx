@@ -9,6 +9,7 @@ import {
   Settings,
   FolderKanban,
   Workflow, // factory:
+  Kanban, // factory:
 } from "lucide-react";
 import { OpenHandsLogoButton } from "#/components/shared/buttons/openhands-logo-button";
 import { NavigationLink } from "#/components/shared/navigation-link";
@@ -278,6 +279,14 @@ export function SidebarRailBody({
                   <path d="M12 13.5V8" />
                 </svg>
               }
+            />
+            {/* factory: tickets dashboard */}
+            <SidebarNavLink
+              to="/tickets"
+              label="Tickets" // eslint-disable-line i18next/no-literal-string -- factory UI
+              testId="sidebar-factory-tickets-link"
+              collapsed={collapsed}
+              icon={<Kanban width={ICON_SIZE} height={ICON_SIZE} />}
             />
             {/* factory: workflow node editor */}
             <SidebarNavLink

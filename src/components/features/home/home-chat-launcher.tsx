@@ -62,6 +62,11 @@ import { OpenLauncherButton } from "./open-launcher-button";
 import { OpenWorkspaceDialog } from "./open-workspace-dialog";
 import { OpenRepositoryDialog } from "./open-repository-dialog";
 import { HomeGitControlBarPreview } from "./home-git-control-bar-preview";
+// factory: task type (plain chat or a factory workflow)
+import {
+  FactoryTaskTypePicker,
+  useFactoryTaskLauncher,
+} from "#/factory/task-type";
 
 // How long a create may run before the "Creating conversation…" toast appears.
 const CREATING_TOAST_DELAY_MS = 600;
@@ -105,6 +110,7 @@ export function HomeChatLauncher() {
       isLocal ? settings?.conversation_settings?.default_runtime : null,
       lastUsedWorkspaceMode,
     );
+  const factoryTask = useFactoryTaskLauncher(); // factory:
   const isRecommendedAutomationsDismissed =
     useHomeRecommendedAutomationsDismissed();
   const [selectedPlugins, setSelectedPlugins] = useState<PluginSpec[]>([]);
@@ -183,6 +189,16 @@ export function HomeChatLauncher() {
     // create a conversation that can't run (it would fail with a cryptic
     // API-key error on the first turn).
     if (llmBlocked) return;
+
+    // factory: with a task type, the message becomes a factory ticket instead.
+    if (factoryTask.choice && !isAutomateMode) {
+      launchInFlight.current = true;
+      void factoryTask.launch(trimmed, hasAttachments).then((ok) => {
+        launchInFlight.current = false;
+        if (!ok) restoreMessageToInputIfEmpty(message);
+      });
+      return;
+    }
 
     launchInFlight.current = true;
     const ownsLaunch = () =>
@@ -513,11 +529,19 @@ export function HomeChatLauncher() {
           <CustomChatInput
             onSubmit={handleSubmitWithModelGuard}
             onFilesPaste={handleUpload}
-            disabled={isCreating || llmBlocked || !!activeLaunch}
+            disabled={
+              isCreating ||
+              llmBlocked ||
+              !!activeLaunch ||
+              factoryTask.isPending
+            }
             placeholder={
               isAutomateMode
                 ? t(I18nKey.HOME$AUTOMATE_PROMPT_PLACEHOLDER)
-                : t(I18nKey.SUGGESTIONS$WHAT_TO_BUILD)
+                : factoryTask.choice
+                  ? // factory:
+                    "Décris la tâche : la 1re ligne devient le titre de l'issue" // eslint-disable-line i18next/no-literal-string -- factory UI
+                  : t(I18nKey.SUGGESTIONS$WHAT_TO_BUILD)
             }
           />
         </div>
@@ -547,6 +571,13 @@ export function HomeChatLauncher() {
             isAutomateMode && "pointer-events-none opacity-40",
           )}
         >
+          {/* factory: task type */}
+          <FactoryTaskTypePicker
+            choice={factoryTask.choice}
+            options={factoryTask.options}
+            onChange={factoryTask.setChoice}
+            disabled={isCreating || isAutomateMode || factoryTask.isPending}
+          />
           {hasSelection ? (
             <HomeGitControlBarPreview
               workspace={pendingWorkspace}
