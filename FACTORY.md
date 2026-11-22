@@ -20,6 +20,16 @@ Current base: **v1.43.0**.
   build, then builds the image and smoke-tests it.
 - No product telemetry: the image is built with an empty `VITE_POSTHOG_API_KEY`.
 
+## Factory features
+- **Ticket tab** (`src/factory/ticket*.ts(x)`): reads `<working_dir>/.factory/ticket.json`
+  written by the orchestrator; one button per outcome of the current human node, sent as
+  `/decide <outcome> [remarks]` in the conversation. The upstream Build button is disabled.
+- **Workflows page** (`/workflows`, `src/factory/workflows/`): node editor (React Flow +
+  dagre) for the orchestrator's workflow definitions, through `/factory-api` (same host,
+  behind Authelia). Templates are read-only (duplicate them), every save is a new version,
+  validation and node ports always come from the server. Also: project defaults, manual
+  start, runs per node.
+
 ## Image
 `ghcr.io/asteb612/factory-canvas:<canvas version>-<sha7>`, built from `docker/Dockerfile`
 with the pins of `config/defaults.json`. The factory agent image

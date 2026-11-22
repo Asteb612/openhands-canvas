@@ -23,6 +23,8 @@ export default [
     route("mcp", "routes/mcp.tsx"),
     route("projects", "routes/projects.tsx"),
     route("projects/:projectId", "routes/project.tsx"),
+    // factory: workflow node editor (software-factory orchestrator API)
+    route("workflows", "factory/workflows/workflows-page.tsx"),
     route("settings", "routes/settings.tsx", [
       index("routes/settings-index.tsx"),
       route("llm", "routes/llm-settings.tsx"),

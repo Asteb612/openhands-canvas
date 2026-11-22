@@ -70,23 +70,71 @@ describe("factory ticket", () => {
   it("approves only after an explicit confirmation", async () => {
     const user = userEvent.setup();
     render(<FactoryTicketView ticket={base} />);
-    await user.click(screen.getByTestId("factory-approve"));
+    await user.click(screen.getByTestId("factory-outcome-approve"));
     expect(mockSend).not.toHaveBeenCalled();
-    await user.click(screen.getByTestId("factory-approve"));
-    expect(sentTexts()).toEqual(["/approve"]);
+    await user.click(screen.getByTestId("factory-outcome-approve"));
+    expect(sentTexts()).toEqual(["/decide approve"]);
     expect(screen.getByTestId("factory-decision-sent")).toBeInTheDocument();
   });
 
-  it("sends /changes with the remarks, never an empty one", async () => {
+  it("sends the changes choice with the remarks, never an empty one", async () => {
     const user = userEvent.setup();
     render(<FactoryTicketView ticket={base} />);
-    expect(screen.getByTestId("factory-changes")).toBeDisabled();
+    expect(screen.getByTestId("factory-outcome-changes")).toBeDisabled();
     await user.type(
       screen.getByTestId("factory-remarks"),
       "Ajoute le cas limite X",
     );
-    await user.click(screen.getByTestId("factory-changes"));
-    expect(sentTexts()).toEqual(["/changes Ajoute le cas limite X"]);
+    await user.click(screen.getByTestId("factory-outcome-changes"));
+    expect(sentTexts()).toEqual(["/decide changes Ajoute le cas limite X"]);
+  });
+
+  it("draws one button per workflow outcome", async () => {
+    const user = userEvent.setup();
+    render(
+      <FactoryTicketView
+        ticket={{
+          ...base,
+          workflow: { id: "bugfix", version: 2, name: "Correctif" },
+          review: {
+            what: "le test manuel",
+            files: [],
+            outcomes: [
+              {
+                id: "ok",
+                label: "Testé, OK",
+                kind: "approve",
+                requireComment: false,
+              },
+              {
+                id: "retest",
+                label: "À refaire",
+                kind: "changes",
+                requireComment: true,
+              },
+              {
+                id: "drop",
+                label: "Abandonner",
+                kind: "reject",
+                requireComment: false,
+              },
+              {
+                id: "later",
+                label: "Plus tard",
+                kind: "other",
+                requireComment: false,
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText(/workflow Correctif \(v2\)/)).toBeInTheDocument();
+    expect(screen.getByTestId("factory-outcome-retest")).toBeDisabled();
+    await user.click(screen.getByTestId("factory-outcome-drop"));
+    expect(mockSend).not.toHaveBeenCalled(); // rejection needs a confirmation
+    await user.click(screen.getByTestId("factory-outcome-later"));
+    expect(sentTexts()).toEqual(["/decide later"]);
   });
 
   it("has no decision box when nothing is awaited", () => {
