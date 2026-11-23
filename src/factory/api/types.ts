@@ -158,7 +158,10 @@ export interface FactoryProject {
   backend: { id: string; path: string };
   defaultWorkflow: string | null;
   enabledWorkflows: string[];
+  /** Names a command node may run. */
   commands: string[];
+  /** The full catalogue (projects/<id>.yaml): how to install, test, run the project. */
+  commandList?: ProjectCommand[];
   settings?: ProjectSettings;
   config?: {
     defaultBranch: string;
@@ -278,3 +281,15 @@ export type WorkflowScope =
   { kind: "template" } | { kind: "project"; project: string };
 
 export const TEMPLATE_SCOPE: WorkflowScope = { kind: "template" };
+
+export type CommandKind = "setup" | "check" | "run" | "other";
+
+export interface ProjectCommand {
+  name: string;
+  run: string;
+  description: string;
+  kind: CommandKind;
+  timeoutSeconds: number;
+  /** Why it cannot run in the agent pod; null when it can. */
+  unavailable: string | null;
+}

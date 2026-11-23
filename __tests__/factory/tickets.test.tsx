@@ -645,6 +645,56 @@ describe("project page", () => {
     );
   };
 
+  it("lists the project's commands by kind, unavailable ones flagged", async () => {
+    (globalThis as { __projects?: FactoryProject[] }).__projects = [
+      project({
+        commandList: [
+          {
+            name: "test",
+            run: "pnpm test",
+            description: "Tests unitaires",
+            kind: "check",
+            timeoutSeconds: 1800,
+            unavailable: null,
+          },
+          {
+            name: "install",
+            run: "pnpm install --frozen-lockfile",
+            description: "",
+            kind: "setup",
+            timeoutSeconds: 1200,
+            unavailable: null,
+          },
+          {
+            name: "stack-up",
+            run: "docker compose up -d",
+            description: "La stack",
+            kind: "run",
+            timeoutSeconds: 1200,
+            unavailable: "pas de démon Docker",
+          },
+        ],
+      }),
+    ];
+    await renderProject();
+    const section = await screen.findByTestId("factory-commands");
+    const text = section.textContent ?? "";
+    // Grouped: install before checks before run.
+    expect(text.indexOf("install")).toBeLessThan(
+      text.indexOf("Tests unitaires"),
+    );
+    expect(text.indexOf("Tests unitaires")).toBeLessThan(
+      text.indexOf("La stack"),
+    );
+    expect(
+      within(section).getByTestId("factory-command-test"),
+    ).toHaveTextContent("max 30 min");
+    const stack = within(section).getByTestId("factory-command-stack-up");
+    expect(stack).toHaveTextContent("Not available in the pod");
+    expect(stack).toHaveTextContent("pas de démon Docker");
+    expect(stack).toHaveTextContent("docker compose up -d");
+  });
+
   it("edits the board columns and saves them with the notification settings", async () => {
     await renderProject();
     await screen.findByTestId("project-columns");

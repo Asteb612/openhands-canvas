@@ -296,6 +296,23 @@ const BASE = {
   no: ["non", "no"],
   yes: ["oui", "yes"],
   commands: ["Commandes", "Commands"],
+  commandsSection: ["Commandes du projet", "Project commands"],
+  commandsHint: [
+    "Comment installer, tester et lancer le projet. L'agent les lit dans .factory/COMMANDS.md à chaque ticket et l'orchestrateur exécute celles des nœuds « Commande ». À modifier dans projects/{id}.yaml (dépôt infra).",
+    "How to install, test and run the project. The agent reads them in .factory/COMMANDS.md for each ticket and the orchestrator runs those of “Command” nodes. Edit them in projects/{id}.yaml (infra repo).",
+  ],
+  noCommands: [
+    "Aucune commande : l'agent devra deviner à partir du README. Ajoute-les dans la configuration du projet.",
+    "No commands: the agent will have to guess from the README. Add them to the project configuration.",
+  ],
+  cmdKindSetup: ["Installer / préparer", "Install / prepare"],
+  cmdKindCheck: ["Vérifier (lint, tests)", "Check (lint, tests)"],
+  cmdKindRun: ["Lancer", "Run"],
+  cmdKindOther: ["Autres", "Other"],
+  cmdUnavailable: ["Indisponible dans le pod", "Not available in the pod"],
+  cmdTimeout: ["max {m} min", "max {m} min"],
+  copy: ["Copier", "Copy"],
+  copied: ["Copié", "Copied"],
   subscription: ["Abonnement Claude", "Claude subscription"],
   // workflows page
   templates: ["Modèles", "Templates"],
