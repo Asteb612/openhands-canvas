@@ -9,6 +9,7 @@ import { useQueries } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  Copy,
   PauseCircle,
   PlayCircle,
   Trash2,
@@ -26,8 +27,10 @@ import {
   useSetProjectWorkflows,
   useWorkflows,
   type BoardColumn,
+  type CommandKind,
   type FactoryProject,
   type NotifyKind,
+  type ProjectCommand,
   type ProjectSettings,
   type WorkflowDefinition,
 } from "./api";
@@ -656,12 +659,6 @@ function ConfigSection({ project }: { project: FactoryProject }) {
     rows.push([t("parallel"), String(c.concurrency)]);
     rows.push([t("githubProject"), c.githubProject ? t("tracked") : t("no")]);
   }
-  rows.push([
-    t("commands"),
-    <span key="commands" className="font-mono">
-      {project.commands.join(", ") || "—"}
-    </span>,
-  ]);
   return (
     <Section
       title={t("configSection")}
@@ -675,6 +672,106 @@ function ConfigSection({ project }: { project: FactoryProject }) {
           </React.Fragment>
         ))}
       </dl>
+    </Section>
+  );
+}
+
+const KIND_ORDER: CommandKind[] = ["setup", "check", "run", "other"];
+const KIND_LABEL = {
+  setup: "cmdKindSetup",
+  check: "cmdKindCheck",
+  run: "cmdKindRun",
+  other: "cmdKindOther",
+} as const;
+
+/** The project's commands: what the agent reads in .factory/COMMANDS.md. */
+function CommandsSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
+  const list: ProjectCommand[] =
+    project.commandList ??
+    project.commands.map((name) => ({
+      name,
+      run: "",
+      description: "",
+      kind: "other",
+      timeoutSeconds: 0,
+      unavailable: null,
+    }));
+  const copy = (text: string) =>
+    navigator.clipboard
+      ?.writeText(text)
+      .then(() => displaySuccessToast(t("copied")))
+      .catch(() => undefined);
+  return (
+    <Section
+      title={t("commandsSection")}
+      description={t("commandsHint", { id: project.id })}
+      testId="factory-commands"
+    >
+      {list.length === 0 ? (
+        <p className="text-sm text-muted">{t("noCommands")}</p>
+      ) : (
+        KIND_ORDER.map((kind) => {
+          const group = list.filter((c) => c.kind === kind);
+          if (!group.length) return null;
+          return (
+            <div key={kind} className="flex flex-col gap-2">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-muted">
+                {t(KIND_LABEL[kind])}
+              </h3>
+              <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+                {group.map((c) => (
+                  <li
+                    key={c.name}
+                    className="flex flex-col gap-1 px-3 py-2.5"
+                    data-testid={`factory-command-${c.name}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-medium text-content">
+                        {c.name}
+                      </span>
+                      {c.unavailable ? (
+                        <Pill tone="warning" title={c.unavailable}>
+                          {t("cmdUnavailable")}
+                        </Pill>
+                      ) : (
+                        c.timeoutSeconds > 0 && (
+                          <Pill>
+                            {t("cmdTimeout", {
+                              m: Math.round(c.timeoutSeconds / 60),
+                            })}
+                          </Pill>
+                        )
+                      )}
+                    </div>
+                    {c.description && (
+                      <p className="text-sm text-muted">{c.description}</p>
+                    )}
+                    {c.unavailable && (
+                      <p className="text-xs text-warning">{c.unavailable}</p>
+                    )}
+                    {c.run && (
+                      <div className="flex items-start gap-2">
+                        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md bg-canvas-base px-2 py-1 font-mono text-xs text-content">
+                          {c.run}
+                        </code>
+                        <button
+                          type="button"
+                          aria-label={t("copy")}
+                          className="cursor-pointer pt-1 text-muted hover:text-content"
+                          onClick={() => copy(c.run)}
+                        >
+                          <Copy className="size-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })
+      )}
     </Section>
   );
 }
@@ -702,6 +799,7 @@ export default function FactoryProjectPage() {
             <WorkflowsSection project={project} />
             <ColumnsSection key={project.id} project={project} />
             <NotificationsSection project={project} />
+            <CommandsSection project={project} />
             <ConfigSection project={project} />
           </>
         )}
