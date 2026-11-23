@@ -32,9 +32,11 @@ export async function factoryFetch<T>(
     credentials: "same-origin",
     headers: {
       Accept: "application/json",
-      ...(method === "GET"
+      ...(method === "GET" ? {} : { "X-Factory-Request": "1" }),
+      // Only with a body: Fastify rejects an empty body declared as JSON (HTTP 400).
+      ...(init.body === undefined
         ? {}
-        : { "Content-Type": "application/json", "X-Factory-Request": "1" }),
+        : { "Content-Type": "application/json" }),
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });

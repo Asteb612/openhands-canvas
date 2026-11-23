@@ -111,6 +111,7 @@ import { automationIconActionButtonClassName } from "#/components/features/autom
 import PlayIcon from "#/icons/play.svg?react";
 import { StatusBadge } from "#/components/features/automations/status-badge";
 import { setupDraftFromServerDraft } from "#/components/features/automations/setup/automation-setup-draft-service";
+import { FactoryAutomateNotice } from "#/factory/automate-notice"; // factory: scheduled workflows instead
 
 const PAGE_SIZE = 50;
 
@@ -732,10 +733,16 @@ export function AutomationsDashboard({
 
   // Dashboard mode wraps the page in the manifest's sub-page shell; without a
   // manifest the wrapper — like everything else — is exactly today's.
-  const renderShell = (content: ReactNode) =>
-    embedded ? (
-      content
-    ) : dashboard && subPageNav ? (
+  const renderShell = (page: ReactNode) => {
+    if (embedded) return page;
+    // factory: recurring tasks are scheduled factory workflows (Claude ACP fills no form).
+    const content = (
+      <>
+        <FactoryAutomateNotice />
+        {page}
+      </>
+    );
+    return dashboard && subPageNav ? (
       <ManifestSubpageLayout
         heading={subPageNav.heading}
         navTestIdBase="automations-navbar"
@@ -748,6 +755,7 @@ export function AutomationsDashboard({
         <div className="p-6 max-w-4xl mx-auto">{content}</div>
       </div>
     );
+  };
 
   const hasMoreDrafts = draftsData
     ? draftsData.total > draftsData.drafts.length
