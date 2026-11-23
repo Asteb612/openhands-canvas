@@ -7,7 +7,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { factoryFetch, factoryKeys, QUIET } from "../api/client";
-import type { Problem, ValidationResponse, WorkflowDefinition } from "../api";
+import type {
+  Problem,
+  ValidationResponse,
+  WorkflowDefinition,
+  WorkflowNode,
+} from "../api";
 
 export interface WorkflowSession {
   session: string;
@@ -20,7 +25,15 @@ export interface WorkflowSession {
   ok: boolean;
   problems: Problem[];
   ports: ValidationResponse["ports"];
+  /** Nodes the owner edited by hand (the agent's changes to them are reverted). */
+  ownerNodes: string[];
+  /** Name, description and settings edited by hand. */
+  ownerWorkflow: boolean;
+  /** Last time agent changes to the owner's parts were reverted. */
+  restored: { nodes: string[]; workflow: boolean; at: string } | null;
 }
+
+export type SessionRef = { project: string; session: string };
 
 const enc = encodeURIComponent;
 
@@ -39,11 +52,18 @@ export function useWorkflowSessionId(): {
 }
 
 /** The draft, validated by the orchestrator; polled while the agent works. */
-export function useWorkflowSession(
-  ref: { project: string; session: string } | null,
-) {
+const sessionKey = (ref: SessionRef | null) => [
+  "factory",
+  "workflow-session",
+  ref?.project,
+  ref?.session,
+];
+const sessionPath = (ref: SessionRef) =>
+  `/projects/${enc(ref.project)}/workflow-sessions/${enc(ref.session)}`;
+
+export function useWorkflowSession(ref: SessionRef | null) {
   return useQuery({
-    queryKey: ["factory", "workflow-session", ref?.project, ref?.session],
+    queryKey: sessionKey(ref),
     enabled: !!ref,
     queryFn: () =>
       factoryFetch<WorkflowSession>(
@@ -103,4 +123,44 @@ export function useSaveWorkflowSession() {
       ]),
     meta: QUIET,
   });
+}
+
+/**
+ * Hand edits of the owner in the Workflow tab: a node, or the name and settings. The
+ * edited part becomes the owner's (the orchestrator reverts the agent's changes to
+ * it) until it is handed back with `release`.
+ */
+export function useSessionEdits(ref: SessionRef | null) {
+  const qc = useQueryClient();
+  const put = (data: WorkflowSession) => qc.setQueryData(sessionKey(ref), data);
+  const node = useMutation({
+    mutationFn: (n: WorkflowNode) =>
+      factoryFetch<WorkflowSession>(`${sessionPath(ref!)}/nodes/${enc(n.id)}`, {
+        method: "PUT",
+        body: { node: n },
+      }),
+    onSuccess: put,
+    meta: QUIET,
+  });
+  const workflow = useMutation({
+    mutationFn: (
+      w: Pick<WorkflowDefinition, "name" | "description" | "settings">,
+    ) =>
+      factoryFetch<WorkflowSession>(`${sessionPath(ref!)}/workflow`, {
+        method: "PUT",
+        body: w,
+      }),
+    onSuccess: put,
+    meta: QUIET,
+  });
+  const release = useMutation({
+    /** A node id, or "_workflow" for the name and settings. */
+    mutationFn: (part: string) =>
+      factoryFetch<WorkflowSession>(`${sessionPath(ref!)}/owner/${enc(part)}`, {
+        method: "DELETE",
+      }),
+    onSuccess: put,
+    meta: QUIET,
+  });
+  return { node, workflow, release };
 }

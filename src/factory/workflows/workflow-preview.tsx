@@ -64,12 +64,18 @@ export function DefinitionGraph({
   ports,
   problems,
   height = 260,
+  selected,
+  onNodeClick,
 }: {
   def: WorkflowDefinition;
   currentNode?: string | null;
   ports?: ValidationResponse["ports"];
   problems?: Problem[];
   height?: number;
+  /** Highlighted node (a draft node being edited), without re-centring on it. */
+  selected?: string | null;
+  /** Nodes become clickable (a draft edited by hand). */
+  onNodeClick?: (id: string) => void;
 }) {
   const colorMode = COLOR_THEMES[useColorTheme()].appearance;
   const flow = React.useMemo(() => {
@@ -82,21 +88,22 @@ export function DefinitionGraph({
     return {
       nodes: f.nodes.map((n) => ({
         ...n,
-        selected: n.id === currentNode,
+        selected: n.id === (selected ?? currentNode),
         draggable: false,
         selectable: false,
       })),
       edges: f.edges,
     };
-  }, [def, currentNode, ports, problems]);
+  }, [def, currentNode, ports, problems, selected]);
   // A changed set of nodes (a draft the agent rewrote) is framed again.
   const shape = def.nodes.map((n) => n.id).join(",");
   return (
     <div
-      className="w-full overflow-hidden rounded-lg border border-border"
+      className="w-full shrink-0 overflow-hidden rounded-lg border border-border"
       // eslint-disable-next-line shadcn/no-inline-styles -- caller-chosen height
       style={{ height }}
       data-testid="factory-workflow-preview"
+      data-clickable={onNodeClick ? "true" : undefined}
     >
       <ReactFlowProvider key={shape}>
         <ReactFlow
@@ -108,6 +115,8 @@ export function DefinitionGraph({
           nodesConnectable={false}
           elementsSelectable={false}
           deleteKeyCode={null}
+          onNodeClick={onNodeClick ? (_e, n) => onNodeClick(n.id) : undefined}
+          onPaneClick={onNodeClick ? () => onNodeClick("") : undefined}
           colorMode={colorMode}
           fitView
           fitViewOptions={

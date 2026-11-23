@@ -75,7 +75,7 @@ export default function WorkflowListPage() {
     | { kind: "fromTemplate"; template?: string }
     | { kind: "agent" }
     | null
-  >(null);
+  >(() => (params.get("agent") ? { kind: "agent" } : null)); // ?agent=1: from Automate's notice
   const ready = !projectsLoading;
   const {
     data: workflows,

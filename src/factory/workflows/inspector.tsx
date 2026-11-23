@@ -34,8 +34,10 @@ export function NodeInspector({
   commands: string[];
   problems: string[];
   onChange: (n: WorkflowNode) => void;
-  onRename: (newId: string) => void;
-  onDelete: () => void;
+  /** Without it, the id is fixed (a draft node edited by hand). */
+  onRename?: (newId: string) => void;
+  /** Without it, the node cannot be deleted here. */
+  onDelete?: () => void;
 }) {
   const t = useFactoryT();
   const [idDraft, setIdDraft] = React.useState(node.id);
@@ -78,11 +80,11 @@ export function NodeInspector({
             !idValid && "border-danger",
           )}
           value={idDraft}
-          disabled={readOnly}
+          disabled={readOnly || !onRename}
           data-testid="wf-node-id"
           onChange={(e) => setIdDraft(e.target.value)}
           onBlur={() => {
-            if (idDraft !== node.id && idValid) onRename(idDraft);
+            if (idDraft !== node.id && idValid && onRename) onRename(idDraft);
             else setIdDraft(node.id);
           }}
         />
@@ -151,7 +153,7 @@ export function NodeInspector({
           />
         )}
       </div>
-      {!readOnly && (
+      {!readOnly && onDelete && (
         <button
           type="button"
           className={cn(

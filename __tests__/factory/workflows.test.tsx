@@ -101,6 +101,17 @@ const def: WorkflowDefinition = {
   layout: {},
 };
 
+/** The session as the orchestrator returns it (owner's hand edits included). */
+const sessionView = {
+  definition: def,
+  ok: true,
+  problems: [],
+  ports: {},
+  ownerNodes: ["start"],
+  ownerWorkflow: false,
+  restored: { nodes: ["start"], workflow: false, at: "2026-11-23T10:00:00Z" },
+};
+
 describe("workflow graph helpers", () => {
   it("lays out every node and keeps saved positions", () => {
     const l = autoLayout({ ...def, layout: { start: { x: 5, y: 7 } } });
@@ -369,6 +380,15 @@ describe("Workflows pages", () => {
         )
           return json({ scope: "autoriz", id: "friday", version: 1 });
         if (
+          path.startsWith(
+            "/factory-api/projects/autoriz/workflow-sessions/abcdefabcdef/",
+          )
+        )
+          return json({
+            ...sessionView,
+            ownerNodes: method === "DELETE" ? [] : ["start"],
+          });
+        if (
           path ===
           "/factory-api/projects/autoriz/workflow-sessions/abcdefabcdef"
         )
@@ -379,10 +399,7 @@ describe("Workflows pages", () => {
             baseVersion: null,
             createdBy: "dev",
             createdAt: "",
-            definition: def,
-            ok: true,
-            problems: [],
-            ports: {},
+            ...sessionView,
           });
         if (path.endsWith("/node-types"))
           return json({
@@ -673,6 +690,86 @@ describe("Workflows pages", () => {
             c.url.endsWith("/workflow-sessions/abcdefabcdef/save"),
           )?.body,
         ).toEqual({ id: "friday" }),
+      );
+    } finally {
+      conversation.tags = null;
+    }
+  });
+
+  it("the Workflow tab: the owner edits a node and the settings by hand, and hands a node back", async () => {
+    conversation.tags = {
+      factoryproject: "autoriz",
+      factoryworkflowsession: "abcdefabcdef",
+    };
+    try {
+      const user = userEvent.setup();
+      const { default: WorkflowSessionTab } =
+        await import("#/factory/workflows/workflow-session-tab");
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter>
+            <WorkflowSessionTab />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      // An agent change to the owner's node was reverted.
+      expect(
+        await screen.findByTestId("wf-session-restored"),
+      ).toHaveTextContent("start");
+      // The owner's nodes are listed; one opens its form.
+      const owned = screen.getByTestId("wf-session-owned");
+      await user.click(within(owned).getByRole("button", { name: "start" }));
+      const panel = await screen.findByTestId("wf-session-node-panel");
+      expect(within(panel).getByTestId("wf-node-id")).toBeDisabled();
+      expect(
+        within(panel).queryByTestId("wf-delete-node"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(panel).getByTestId("wf-session-owned-pill"),
+      ).toBeInTheDocument();
+      // The node's own label (the trigger form has a label field too).
+      await user.type(within(panel).getAllByLabelText("Label")[0]!, "Go");
+      // Sent once the owner pauses, as the whole node.
+      await waitFor(
+        () =>
+          expect(
+            calls.filter(
+              (c) =>
+                c.method === "PUT" &&
+                c.url.endsWith("/workflow-sessions/abcdefabcdef/nodes/start"),
+            ).at(-1)?.body,
+          ).toMatchObject({ node: { id: "start", label: "Go" } }),
+        { timeout: 3000 },
+      );
+      await user.click(within(panel).getByTestId("wf-session-release"));
+      await waitFor(() =>
+        expect(
+          calls.some(
+            (c) =>
+              c.method === "DELETE" &&
+              c.url.endsWith("/workflow-sessions/abcdefabcdef/owner/start"),
+          ),
+        ).toBe(true),
+      );
+      // Name and settings.
+      await user.click(screen.getByTestId("wf-session-settings"));
+      const settings = await screen.findByTestId("wf-session-settings-panel");
+      await user.clear(within(settings).getByTestId("wf-name"));
+      await user.type(within(settings).getByTestId("wf-name"), "Vendredi");
+      await waitFor(
+        () =>
+          expect(
+            calls.filter(
+              (c) =>
+                c.method === "PUT" &&
+                c.url.endsWith("/workflow-sessions/abcdefabcdef/workflow"),
+            ).at(-1)?.body,
+          ).toMatchObject({ name: "Vendredi", description: "" }),
+        { timeout: 3000 },
       );
     } finally {
       conversation.tags = null;
