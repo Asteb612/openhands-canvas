@@ -708,6 +708,13 @@ function CommandsSection({ project }: { project: FactoryProject }) {
       description={t("commandsHint", { id: project.id })}
       testId="factory-commands"
     >
+      {project.docker !== undefined && (
+        <div data-testid="factory-docker">
+          <Pill tone={project.docker ? "success" : "warning"}>
+            {t(project.docker ? "dockerOn" : "dockerOff")}
+          </Pill>
+        </div>
+      )}
       {list.length === 0 ? (
         <p className="text-sm text-muted">{t("noCommands")}</p>
       ) : (

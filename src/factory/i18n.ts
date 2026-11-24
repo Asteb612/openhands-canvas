@@ -301,6 +301,14 @@ const BASE = {
     "Comment installer, tester et lancer le projet. L'agent les lit dans .factory/COMMANDS.md à chaque ticket et l'orchestrateur exécute celles des nœuds « Commande ». À modifier dans projects/{id}.yaml (dépôt infra).",
     "How to install, test and run the project. The agent reads them in .factory/COMMANDS.md for each ticket and the orchestrator runs those of “Command” nodes. Edit them in projects/{id}.yaml (infra repo).",
   ],
+  dockerOn: [
+    "Docker disponible dans le pod de l'agent (docker, compose, build ; images conservées entre tickets)",
+    "Docker available in the agent pod (docker, compose, build; images kept between tickets)",
+  ],
+  dockerOff: [
+    "Pas de Docker dans le pod de l'agent",
+    "No Docker in the agent pod",
+  ],
   noCommands: [
     "Aucune commande : l'agent devra deviner à partir du README. Ajoute-les dans la configuration du projet.",
     "No commands: the agent will have to guess from the README. Add them to the project configuration.",

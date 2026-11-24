@@ -674,6 +674,7 @@ describe("project page", () => {
             unavailable: "pas de démon Docker",
           },
         ],
+        docker: true,
       }),
     ];
     await renderProject();
@@ -693,6 +694,9 @@ describe("project page", () => {
     expect(stack).toHaveTextContent("Not available in the pod");
     expect(stack).toHaveTextContent("pas de démon Docker");
     expect(stack).toHaveTextContent("docker compose up -d");
+    expect(within(section).getByTestId("factory-docker")).toHaveTextContent(
+      "Docker available in the agent pod",
+    );
   });
 
   it("edits the board columns and saves them with the notification settings", async () => {

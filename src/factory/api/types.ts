@@ -162,6 +162,8 @@ export interface FactoryProject {
   commands: string[];
   /** The full catalogue (projects/<id>.yaml): how to install, test, run the project. */
   commandList?: ProjectCommand[];
+  /** Docker daemon in the project's agent pod (Kata VM sidecar). */
+  docker?: boolean;
   settings?: ProjectSettings;
   config?: {
     defaultBranch: string;
