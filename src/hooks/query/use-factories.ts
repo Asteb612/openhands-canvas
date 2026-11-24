@@ -6,6 +6,7 @@ import { hasAutomationInterface } from "#/manifests/automation-interface";
 import { useCloudIntegrationsConfig } from "./use-cloud-integrations-config";
 import { useExperimentalFeatures } from "./use-experimental-features";
 import { useDeploymentCapabilities } from "./use-manifest-capabilities";
+import { FACTORY_FORK_DISABLES_FACTORIES } from "#/factory/flags"; // factory:
 
 export const FACTORIES_QUERY_KEY = ["factories"] as const;
 
@@ -32,10 +33,13 @@ export function useFactoriesSupported() {
           feature.key === FACTORIES_EXPERIMENTAL_FEATURE && feature.enabled,
       ) ?? false);
   const isSwitchLoading = isCloud ? cloudConfig.isLoading : features.isLoading;
+  // factory: upstream Factories is removed from this fork (our command center
+  // is /factory); never supported, so no entry, page or automation action shows.
+  const upstreamSupported =
+    isTurnedOn && AutomationService.supportsFactories(capabilities.data);
   return {
     isLoading: capabilities.isLoading || isSwitchLoading,
-    isSupported:
-      isTurnedOn && AutomationService.supportsFactories(capabilities.data),
+    isSupported: FACTORY_FORK_DISABLES_FACTORIES ? false : upstreamSupported,
   };
 }
 

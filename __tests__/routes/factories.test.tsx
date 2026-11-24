@@ -35,6 +35,10 @@ import FactoryDetail from "#/routes/factory-detail";
 import type { Backend } from "#/api/backend-registry/types";
 import type { Automation, Factory } from "#/types/automation";
 
+// factory: the fork turns upstream Factories off (#/factory/flags); these
+// upstream tests cover that code with it back on.
+vi.mock("#/factory/flags", () => ({ FACTORY_FORK_DISABLES_FACTORIES: false }));
+
 vi.mock("#/manifests/manifest-sources", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("#/manifests/manifest-sources")>();

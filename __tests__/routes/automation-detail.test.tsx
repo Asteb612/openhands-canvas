@@ -35,6 +35,10 @@ import { bytesToBase64 } from "#/utils/base64";
 import { packTarGzip } from "#/utils/tar-gzip";
 import * as ToastHandlers from "#/utils/custom-toast-handlers";
 
+// factory: the fork turns upstream Factories off (#/factory/flags); these
+// upstream tests cover that code with it back on.
+vi.mock("#/factory/flags", () => ({ FACTORY_FORK_DISABLES_FACTORIES: false }));
+
 vi.mock("#/api/automation-service/automation-service.api", () => ({
   default: {
     getAutomation: vi.fn(),

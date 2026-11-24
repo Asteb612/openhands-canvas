@@ -15,6 +15,10 @@ import { ActiveBackendProvider } from "#/contexts/active-backend-context";
 import { useFactoriesSupported } from "#/hooks/query/use-factories";
 import { callCloudProxy } from "#/api/cloud/proxy";
 
+// factory: the fork turns upstream Factories off (#/factory/flags); these
+// upstream tests cover that code with it back on.
+vi.mock("#/factory/flags", () => ({ FACTORY_FORK_DISABLES_FACTORIES: false }));
+
 vi.mock("#/manifests/automation-interface", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("#/manifests/automation-interface")
