@@ -8,9 +8,6 @@ import {
   Server,
   Settings,
   FolderKanban,
-  Workflow, // factory:
-  Kanban, // factory:
-  FolderCog, // factory:
 } from "lucide-react";
 import { OpenHandsLogoButton } from "#/components/shared/buttons/openhands-logo-button";
 import { NavigationLink } from "#/components/shared/navigation-link";
