@@ -100,15 +100,18 @@ export function Select({
   onChange,
   disabled,
   className,
+  testId,
 }: {
   value: string | undefined;
   options: [string, string][];
   onChange: (v: string) => void;
   disabled: boolean;
   className?: string;
+  testId?: string;
 }) {
   return (
     <select
+      data-testid={testId}
       className={cn(selectClassName, className)}
       value={value ?? ""}
       disabled={disabled}

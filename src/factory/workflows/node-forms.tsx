@@ -65,6 +65,27 @@ const REVIEW_FOCUS = [
   "conventions",
 ] as const;
 
+/** Claude Code reasoning effort of an agent or review step (orchestrator EFFORT_LEVELS). */
+const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+
+function EffortField({ c, set, ro }: FormProps) {
+  const t = useFactoryT();
+  return (
+    <Field label={t("wfEffort")} hint={t("wfEffortHint")}>
+      <Select
+        value={c.effort ?? "default"}
+        disabled={ro}
+        testId="wf-effort"
+        options={[
+          ["default", t("wfEffortDefault")],
+          ...EFFORT_LEVELS.map((e): [string, string] => [e, e]),
+        ]}
+        onChange={(v) => set({ effort: v === "default" ? undefined : v })}
+      />
+    </Field>
+  );
+}
+
 function ReviewForm({ c, set, ro }: FormProps) {
   const t = useFactoryT();
   const focus: string[] = c.focus ?? ["correctness", "security"];
@@ -107,6 +128,7 @@ function ReviewForm({ c, set, ro }: FormProps) {
           onChange={(blockOn) => set({ blockOn })}
         />
       </Field>
+      <EffortField c={c} set={set} ro={ro} />
       <Field
         label={t("wfReviewInstructions")}
         hint={t("wfReviewInstructionsHint")}
@@ -159,6 +181,7 @@ function AgentForm({
           onChange={(conversation) => set({ conversation })}
         />
       </Field>
+      <EffortField c={c} set={set} ro={ro} />
       <Field
         label={t("wfAgentStopChecks")}
         hint={t("wfAgentStopChecksHint", {

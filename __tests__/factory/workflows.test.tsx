@@ -607,6 +607,31 @@ describe("Workflows pages", () => {
     ]);
   });
 
+  it("sets an agent step's reasoning effort", async () => {
+    const user = userEvent.setup();
+    renderPage("/factory/workflows/mine/edit");
+    await screen.findByTestId("wf-node-review");
+    await user.click(await screen.findByTestId("wf-add-agent"));
+    const effort = await screen.findByTestId("wf-effort");
+    expect(effort).toHaveValue("default");
+    await user.selectOptions(effort, "high");
+    const nodes = await savedNodes();
+    expect(nodes.find((n) => n.id === "agent_1")!.config.effort).toBe("high");
+  });
+
+  it("an effort back to default is not stored", async () => {
+    const user = userEvent.setup();
+    renderPage("/factory/workflows/mine/edit");
+    await screen.findByTestId("wf-node-review");
+    await user.click(await screen.findByTestId("wf-add-agent"));
+    await user.selectOptions(await screen.findByTestId("wf-effort"), "max");
+    await user.selectOptions(screen.getByTestId("wf-effort"), "default");
+    const nodes = await savedNodes();
+    expect(nodes.find((n) => n.id === "agent_1")!.config).not.toHaveProperty(
+      "effort",
+    );
+  });
+
   it("adds a critical review node and picks its focus", async () => {
     const user = userEvent.setup();
     renderPage("/factory/workflows/mine/edit");

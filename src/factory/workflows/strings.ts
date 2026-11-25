@@ -262,6 +262,12 @@ export const WORKFLOW_STRINGS = {
     "Commandes rapides du projet (lint, typecheck) relancées quand l'agent veut terminer : tant qu'une échoue, il reprend (3 fois au plus, 5 min par commande). Disponibles : {list}",
     "Quick project commands (lint, typecheck) run when the agent wants to stop: while one fails it goes back to work (3 times at most, 5 min per command). Available: {list}",
   ],
+  wfEffort: ["Niveau de réflexion", "Reasoning effort"],
+  wfEffortHint: [
+    "Effort de Claude Code pour cette étape (plus haut : meilleure réflexion, plus de quota consommé).",
+    "Claude Code's effort for this step (higher: deeper thinking, more quota used).",
+  ],
+  wfEffortDefault: ["par défaut (celui du modèle)", "default (the model's)"],
   wfReviewIntro: [
     "Un relecteur indépendant (nouvelle conversation, sans écrire de code) relit le diff de la branche et écrit un rapport. Un problème bloquant renvoie le travail par la sortie « changes » avec ses remarques.",
     'An independent reviewer (new conversation, writes no code) reads the branch\'s diff and writes a report. A blocking finding sends the work back through the "changes" port with its remarks.',
