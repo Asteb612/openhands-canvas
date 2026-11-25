@@ -1,9 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- node configs are validated server-side */
+import React from "react";
 import type { WorkflowNode } from "../api";
 import { useFactoryT } from "../i18n";
 import { Field } from "../ui";
 import { HumanForm } from "./human-form";
-import { Area, Num, Select, Text, type SetConfig } from "./inspector-fields";
+import {
+  Area,
+  Check,
+  Num,
+  Select,
+  Text,
+  type SetConfig,
+} from "./inspector-fields";
 import { TriggerForm } from "./trigger-form";
 
 interface FormProps {
@@ -12,7 +20,114 @@ interface FormProps {
   ro: boolean;
 }
 
-function AgentForm({ c, set, ro }: FormProps) {
+const parseNames = (v: string) =>
+  v
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+/**
+ * Project command names as a comma-separated text field. The text is kept as typed
+ * (a trailing ", " survives the round trip); the config gets the parsed list.
+ */
+function CommandNames({
+  value,
+  ro,
+  onChange,
+  testId,
+}: {
+  value: string[] | undefined;
+  ro: boolean;
+  onChange: (v: string[]) => void;
+  testId?: string;
+}) {
+  const joined = (value ?? []).join(", ");
+  const [text, setText] = React.useState(joined);
+  // Another node selected, or an outside change (undo, agent draft): show the config.
+  if (parseNames(text).join(", ") !== joined) setText(joined);
+  return (
+    <Text
+      value={text}
+      disabled={ro}
+      testId={testId}
+      onChange={(v) => {
+        setText(v);
+        onChange(parseNames(v));
+      }}
+    />
+  );
+}
+
+const REVIEW_FOCUS = [
+  "correctness",
+  "security",
+  "tests",
+  "conventions",
+] as const;
+
+function ReviewForm({ c, set, ro }: FormProps) {
+  const t = useFactoryT();
+  const focus: string[] = c.focus ?? ["correctness", "security"];
+  const labels: Record<(typeof REVIEW_FOCUS)[number], string> = {
+    correctness: t("wfReviewCorrectness"),
+    security: t("wfReviewSecurity"),
+    tests: t("wfReviewTests"),
+    conventions: t("wfReviewConventions"),
+  };
+  return (
+    <>
+      <p className="text-xs text-muted">{t("wfReviewIntro")}</p>
+      <Field label={t("wfReviewFocus")}>
+        <div className="flex flex-col gap-2" data-testid="wf-review-focus">
+          {REVIEW_FOCUS.map((f) => (
+            <Check
+              key={f}
+              label={labels[f]}
+              checked={focus.includes(f)}
+              disabled={ro || (focus.length === 1 && focus.includes(f))}
+              onChange={(on) =>
+                set({
+                  focus: on
+                    ? REVIEW_FOCUS.filter((x) => x === f || focus.includes(x))
+                    : focus.filter((x) => x !== f),
+                })
+              }
+            />
+          ))}
+        </div>
+      </Field>
+      <Field label={t("wfReviewBlockOn")}>
+        <Select
+          value={c.blockOn ?? "important"}
+          disabled={ro}
+          options={[
+            ["important", t("wfReviewBlockImportant")],
+            ["any", t("wfReviewBlockAny")],
+          ]}
+          onChange={(blockOn) => set({ blockOn })}
+        />
+      </Field>
+      <Field
+        label={t("wfReviewInstructions")}
+        hint={t("wfReviewInstructionsHint")}
+      >
+        <Area
+          value={c.instructions}
+          rows={4}
+          disabled={ro}
+          onChange={(v) => set({ instructions: v || undefined })}
+        />
+      </Field>
+    </>
+  );
+}
+
+function AgentForm({
+  c,
+  set,
+  ro,
+  commands,
+}: FormProps & { commands: string[] }) {
   const t = useFactoryT();
   return (
     <>
@@ -44,6 +159,19 @@ function AgentForm({ c, set, ro }: FormProps) {
           onChange={(conversation) => set({ conversation })}
         />
       </Field>
+      <Field
+        label={t("wfAgentStopChecks")}
+        hint={t("wfAgentStopChecksHint", {
+          list: commands.join(", ") || "—",
+        })}
+      >
+        <CommandNames
+          value={c.stopChecks}
+          ro={ro}
+          testId="wf-agent-stop-checks"
+          onChange={(stopChecks) => set({ stopChecks })}
+        />
+      </Field>
     </>
   );
 }
@@ -64,17 +192,10 @@ function CommandForm({
           : undefined
       }
     >
-      <Text
-        value={(c.commands ?? []).join(", ")}
-        disabled={ro}
-        onChange={(v) =>
-          set({
-            commands: v
-              .split(",")
-              .map((x) => x.trim())
-              .filter(Boolean),
-          })
-        }
+      <CommandNames
+        value={c.commands}
+        ro={ro}
+        onChange={(v) => set({ commands: v })}
       />
     </Field>
   );
@@ -248,7 +369,9 @@ export function TypeForm({
     case "trigger":
       return <TriggerForm {...props} />;
     case "agent":
-      return <AgentForm {...props} />;
+      return <AgentForm {...props} commands={commands} />;
+    case "review":
+      return <ReviewForm {...props} />;
     case "command":
       return <CommandForm {...props} commands={commands} />;
     case "human":

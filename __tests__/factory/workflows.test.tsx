@@ -410,6 +410,12 @@ describe("Workflows pages", () => {
                 family: "Agent",
                 description: "",
               },
+              {
+                type: "review",
+                label: "Revue critique",
+                family: "Contrôle",
+                description: "",
+              },
             ],
             templateVars: [],
             conditionFields: [],
@@ -571,6 +577,48 @@ describe("Workflows pages", () => {
         (n) => n.id,
       ),
     ).toContain("agent_1");
+  });
+
+  async function savedNodes() {
+    await userEvent.setup().click(screen.getByTestId("wf-save"));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "PUT")).toBe(true),
+    );
+    return (
+      calls.find((c) => c.method === "PUT")!.body as {
+        definition: WorkflowDefinition;
+      }
+    ).definition.nodes;
+  }
+
+  it("an agent node's end-of-turn checks (Stop hook) are project command names", async () => {
+    const user = userEvent.setup();
+    renderPage("/factory/workflows/mine/edit");
+    await screen.findByTestId("wf-node-review");
+    await user.click(await screen.findByTestId("wf-add-agent"));
+    await user.type(
+      await screen.findByTestId("wf-agent-stop-checks"),
+      "lint, typecheck",
+    );
+    const nodes = await savedNodes();
+    expect(nodes.find((n) => n.id === "agent_1")!.config.stopChecks).toEqual([
+      "lint",
+      "typecheck",
+    ]);
+  });
+
+  it("adds a critical review node and picks its focus", async () => {
+    const user = userEvent.setup();
+    renderPage("/factory/workflows/mine/edit");
+    await screen.findByTestId("wf-node-review");
+    await user.click(await screen.findByTestId("wf-add-review"));
+    const focus = await screen.findByTestId("wf-review-focus");
+    await user.click(within(focus).getByText("Tests"));
+    const nodes = await savedNodes();
+    expect(nodes.find((n) => n.id === "review_1")!.config).toEqual({
+      focus: ["correctness", "security", "tests"],
+      blockOn: "important",
+    });
   });
 
   it("creates a project workflow from a template card", async () => {
@@ -737,11 +785,13 @@ describe("Workflows pages", () => {
       await waitFor(
         () =>
           expect(
-            calls.filter(
-              (c) =>
-                c.method === "PUT" &&
-                c.url.endsWith("/workflow-sessions/abcdefabcdef/nodes/start"),
-            ).at(-1)?.body,
+            calls
+              .filter(
+                (c) =>
+                  c.method === "PUT" &&
+                  c.url.endsWith("/workflow-sessions/abcdefabcdef/nodes/start"),
+              )
+              .at(-1)?.body,
           ).toMatchObject({ node: { id: "start", label: "Go" } }),
         { timeout: 3000 },
       );
@@ -763,11 +813,13 @@ describe("Workflows pages", () => {
       await waitFor(
         () =>
           expect(
-            calls.filter(
-              (c) =>
-                c.method === "PUT" &&
-                c.url.endsWith("/workflow-sessions/abcdefabcdef/workflow"),
-            ).at(-1)?.body,
+            calls
+              .filter(
+                (c) =>
+                  c.method === "PUT" &&
+                  c.url.endsWith("/workflow-sessions/abcdefabcdef/workflow"),
+              )
+              .at(-1)?.body,
           ).toMatchObject({ name: "Vendredi", description: "" }),
         { timeout: 3000 },
       );

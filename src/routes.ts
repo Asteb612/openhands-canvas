@@ -36,6 +36,7 @@ export default [
       "factory/workflows/workflow-edit-page.tsx",
     ),
     route("factory/project", "factory/project-page.tsx"),
+    route("factory/memory", "factory/memory-page.tsx"),
     // factory: old URLs
     route("tickets", "factory/legacy-redirect.tsx", {
       id: "factory-legacy-tickets",

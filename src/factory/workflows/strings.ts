@@ -128,6 +128,7 @@ export const WORKFLOW_STRINGS = {
   wfTypeAgent: ["Agent", "Agent"],
   wfTypeCheck: ["Vérification", "Check"],
   wfTypeCommand: ["Commande", "Command"],
+  wfTypeReview: ["Revue critique", "Critical review"],
   wfTypeHuman: ["Validation humaine", "Human review"],
   wfTypeRouter: ["Routeur", "Router"],
   wfTypeGit: ["Git / GitHub", "Git / GitHub"],
@@ -252,6 +253,43 @@ export const WORKFLOW_STRINGS = {
   wfAgentConvNew: [
     "nouvelle (relecteur indépendant)",
     "a new one (independent reviewer)",
+  ],
+  wfAgentStopChecks: [
+    "Vérifications de fin (hook Stop)",
+    "End-of-turn checks (Stop hook)",
+  ],
+  wfAgentStopChecksHint: [
+    "Commandes rapides du projet (lint, typecheck) relancées quand l'agent veut terminer : tant qu'une échoue, il reprend (3 fois au plus, 5 min par commande). Disponibles : {list}",
+    "Quick project commands (lint, typecheck) run when the agent wants to stop: while one fails it goes back to work (3 times at most, 5 min per command). Available: {list}",
+  ],
+  wfReviewIntro: [
+    "Un relecteur indépendant (nouvelle conversation, sans écrire de code) relit le diff de la branche et écrit un rapport. Un problème bloquant renvoie le travail par la sortie « changes » avec ses remarques.",
+    'An independent reviewer (new conversation, writes no code) reads the branch\'s diff and writes a report. A blocking finding sends the work back through the "changes" port with its remarks.',
+  ],
+  wfReviewFocus: ["Axes de revue", "Review focus"],
+  wfReviewCorrectness: [
+    "Exactitude (bugs, régressions)",
+    "Correctness (bugs, regressions)",
+  ],
+  wfReviewSecurity: ["Sécurité", "Security"],
+  wfReviewTests: ["Tests", "Tests"],
+  wfReviewConventions: ["Conventions du dépôt", "Repository conventions"],
+  wfReviewBlockOn: ["Renvoie le travail pour", "Sends the work back on"],
+  wfReviewBlockImportant: [
+    "les problèmes importants seulement",
+    "important findings only",
+  ],
+  wfReviewBlockAny: [
+    "toute remarque (y compris mineure)",
+    "any finding (nits too)",
+  ],
+  wfReviewInstructions: [
+    "Critères propres au projet",
+    "Project-specific criteria",
+  ],
+  wfReviewInstructionsHint: [
+    "Optionnel. Variables {{...}} autorisées comme dans les consignes.",
+    "Optional. {{...}} variables allowed as in prompts.",
   ],
   wfCommandList: [
     "Commandes du projet (dans l'ordre, séparées par des virgules)",

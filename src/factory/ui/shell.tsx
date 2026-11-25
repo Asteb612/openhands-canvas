@@ -5,6 +5,7 @@
  */
 import React from "react";
 import {
+  Brain,
   FolderCog,
   Kanban,
   LayoutDashboard,
@@ -79,6 +80,12 @@ export function FactoryShell({
           label: t("navProject"),
           Icon: FolderCog,
           testId: "factory-nav-project",
+        },
+        {
+          to: "/factory/memory",
+          label: t("navMemory"),
+          Icon: Brain,
+          testId: "factory-nav-memory",
         },
       ]}
     >

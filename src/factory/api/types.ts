@@ -3,6 +3,7 @@
 export type NodeType =
   | "trigger"
   | "agent"
+  | "review"
   | "check"
   | "command"
   | "human"

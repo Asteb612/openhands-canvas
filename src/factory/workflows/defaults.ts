@@ -21,7 +21,10 @@ export function defaultConfig(
       return {
         prompt: t("wfDefaultPrompt"),
         conversation: "ticket",
+        stopChecks: [],
       };
+    case "review":
+      return { focus: ["correctness", "security"], blockOn: "important" };
     case "check":
       return { checks: [{ kind: "commits_ahead", min: 1 }] };
     case "command":
@@ -134,6 +137,8 @@ export function nodeSummary(n: WorkflowNode, t: T = englishT): string {
     }
     case "agent":
       return String(c.prompt ?? "").slice(0, 70);
+    case "review":
+      return (c.focus ?? []).join(", ");
     case "check":
       return (c.checks ?? []).map((x: { kind: string }) => x.kind).join(", ");
     case "command":
@@ -159,6 +164,7 @@ export function nodeSummary(n: WorkflowNode, t: T = englishT): string {
 export const TYPE_LABEL: Record<NodeType, FactoryKey> = {
   trigger: "wfTypeTrigger",
   agent: "wfTypeAgent",
+  review: "wfTypeReview",
   check: "wfTypeCheck",
   command: "wfTypeCommand",
   human: "wfTypeHuman",
@@ -176,6 +182,7 @@ export const TYPE_LABEL: Record<NodeType, FactoryKey> = {
 export const TYPE_COLOR_HEX: Record<NodeType, string> = {
   trigger: "#22c55e",
   agent: "#8b5cf6",
+  review: "#f97316",
   check: "#0ea5e9",
   command: "#0ea5e9",
   human: "#f59e0b",
@@ -190,6 +197,7 @@ export const TYPE_COLOR_HEX: Record<NodeType, string> = {
 const TYPE_TOKEN: Record<NodeType, string> = {
   trigger: "--color-markdown-alert-tip",
   agent: "--color-markdown-alert-important",
+  review: "--color-markdown-alert-warning",
   check: "--color-markdown-alert-note",
   command: "--color-markdown-alert-note",
   human: "--color-markdown-alert-warning",
