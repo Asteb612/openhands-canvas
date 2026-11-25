@@ -613,7 +613,7 @@ export default function TicketsPage() {
         )}
         {runs && view !== "list" && (
           <div
-            className="custom-scrollbar grid min-h-0 flex-1 grid-cols-1 content-start gap-3 overflow-y-auto md:grid-cols-2 xl:auto-cols-fr xl:grid-flow-col xl:grid-cols-none"
+            className="custom-scrollbar grid min-h-0 flex-1 grid-cols-1 content-start gap-3 overflow-y-auto md:grid-cols-2 xl:auto-cols-[minmax(15rem,1fr)] xl:grid-flow-col xl:grid-cols-none xl:overflow-x-auto xl:pb-2"
             data-testid="tickets-board"
           >
             {board.columns.map((c) => {
