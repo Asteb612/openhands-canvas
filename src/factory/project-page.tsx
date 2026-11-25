@@ -313,7 +313,7 @@ function ColumnEditor({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3">
-        <Field label={t("columnTitle")} className="w-48">
+        <Field label={t("columnTitle")} className="w-full sm:w-48">
           <input
             className={fieldClassName}
             value={value.title}
@@ -321,7 +321,10 @@ function ColumnEditor({
             data-testid={`column-title-${value.id}`}
           />
         </Field>
-        <Field label={t("columnHint")} className="min-w-48 flex-1">
+        <Field
+          label={t("columnHint")}
+          className="w-full sm:w-auto sm:min-w-48 sm:flex-1"
+        >
           <input
             className={fieldClassName}
             value={value.hint ?? ""}
@@ -344,7 +347,7 @@ function ColumnEditor({
                 })
               }
               className={cn(
-                "cursor-pointer rounded-full border px-2 text-xs leading-6",
+                "cursor-pointer rounded-full border px-3 text-xs leading-8 sm:px-2 sm:leading-6",
                 on
                   ? "border-primary text-content"
                   : "border-border text-muted hover:text-content",
@@ -363,12 +366,12 @@ function ColumnEditor({
         {nodes.map((k) => (
           <span
             key={k}
-            className="inline-flex items-center gap-1 rounded-full border border-border px-2 text-xs leading-6 text-content"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-3 text-xs leading-8 text-content sm:px-2 sm:leading-6"
           >
             {labelOf(k)}
             <button
               type="button"
-              className="cursor-pointer text-muted hover:text-content"
+              className="-mr-1 cursor-pointer px-1 text-muted hover:text-content"
               onClick={() =>
                 onChange({ ...value, nodes: nodes.filter((x) => x !== k) })
               }
@@ -380,7 +383,10 @@ function ColumnEditor({
         ))}
         {!nodes.length && <span className="text-xs">{t("anyStep")}</span>}
         <select
-          className={cn(selectClassName, "h-8 min-h-8 w-auto text-xs")}
+          className={cn(
+            selectClassName,
+            "h-9 min-h-9 w-full text-xs sm:h-8 sm:min-h-8 sm:w-auto",
+          )}
           value={pick}
           onChange={(e) => {
             const k = e.target.value;

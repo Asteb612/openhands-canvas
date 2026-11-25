@@ -70,19 +70,20 @@ function ObservationRow({
   return (
     <ActivityRow testId={`mem-obs-${o.id}`}>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-start gap-2">
           <button
             type="button"
-            className="flex min-w-0 cursor-pointer items-center gap-1 text-left"
+            className="flex min-w-0 cursor-pointer items-start gap-1 text-left"
             aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
             {open ? (
-              <ChevronDown className="size-3.5 shrink-0 text-muted" />
+              <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted" />
             ) : (
-              <ChevronRight className="size-3.5 shrink-0 text-muted" />
+              <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted" />
             )}
-            <span className="truncate text-sm font-semibold text-content">
+            {/* Two lines on phones, where the row is narrow; one line from sm up. */}
+            <span className="line-clamp-2 break-words text-sm font-semibold text-content sm:truncate">
               {o.title || t("memUntitled")}
             </span>
           </button>

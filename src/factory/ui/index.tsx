@@ -32,7 +32,8 @@ export const selectClassName = cn(
 export const textareaClassName = formControlMultilineFieldClassName;
 /** Discreet text action in dense places (cards, toolbars). */
 export const textActionClassName =
-  "cursor-pointer text-sm text-muted underline-offset-2 hover:text-content hover:underline disabled:cursor-not-allowed disabled:opacity-50";
+  // Touch-sized on phones (36px high), inline text from sm up.
+  "inline-flex min-h-9 items-center sm:min-h-0 cursor-pointer text-sm text-muted underline-offset-2 hover:text-content hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 
 /** A titled block of a settings-like page. */
 export function Section({
@@ -53,14 +54,16 @@ export function Section({
       className="rounded-2xl border border-border bg-surface"
       data-testid={testId}
     >
-      <header className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-5 py-3">
+      <header className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-3 py-3 sm:px-5">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="text-sm font-medium text-content">{title}</h2>
           {description && <p className="text-xs text-muted">{description}</p>}
         </div>
         {actions}
       </header>
-      <div className="flex flex-col gap-3 px-5 py-5">{children}</div>
+      <div className="flex flex-col gap-3 px-3 py-4 sm:px-5 sm:py-5">
+        {children}
+      </div>
     </section>
   );
 }

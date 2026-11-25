@@ -77,7 +77,7 @@ export function FactoryStatusBar() {
           </span>
         ),
       )}
-      <span className="ml-auto flex items-center gap-3">
+      <span className="flex w-full items-center justify-between gap-3 sm:ml-auto sm:w-auto sm:justify-start">
         <span className="text-muted">
           {status.push ? t("pushOn") : t("pushOff")}
         </span>

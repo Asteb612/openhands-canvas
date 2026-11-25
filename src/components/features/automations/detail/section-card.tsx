@@ -19,14 +19,14 @@ export function SectionCard({
       data-testid={testId}
       className="rounded-2xl border border-border bg-surface"
     >
-      <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-3 sm:px-5">
         <span className="size-4 text-muted">{icon}</span>
         <h3 className="text-sm font-medium text-content">{title}</h3>
         {meta ? (
           <span className="ml-auto text-xs text-muted">{meta}</span>
         ) : null}
       </div>
-      <div className="px-5 py-5">{children}</div>
+      <div className="px-3 py-4 sm:px-5 sm:py-5">{children}</div>
     </section>
   );
 }

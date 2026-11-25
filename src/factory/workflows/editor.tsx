@@ -122,8 +122,12 @@ export function Editor({
     (p) => !p.node && !p.edge,
   );
   return (
-    <div className="flex min-h-0 min-w-0 flex-1" data-testid="wf-editor">
-      <div className="flex min-w-0 flex-1 flex-col">
+    // Phones: canvas on top, side panel below, the whole editor scrolls; side by side from md.
+    <div
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden"
+      data-testid="wf-editor"
+    >
+      <div className="flex min-w-0 shrink-0 flex-col md:flex-1 md:shrink">
         <EditorToolbar scope={scope} editor={editor} />
         {scope.kind === "project" && summary?.templateUpdate && (
           <TemplateUpdateNotice
@@ -148,7 +152,10 @@ export function Editor({
             </Notice>
           </div>
         )}
-        <div className="relative min-h-0 flex-1" data-testid="wf-canvas">
+        <div
+          className="relative h-[55vh] shrink-0 md:h-auto md:min-h-0 md:flex-1"
+          data-testid="wf-canvas"
+        >
           <ReactFlow
             nodes={flow.nodes}
             edges={flow.edges}
@@ -167,6 +174,8 @@ export function Editor({
             <Background />
             <Controls showInteractive={false} />
             <MiniMap<WorkflowFlowNode>
+              // Phones: the canvas is small, the minimap would cover it.
+              className="max-md:!hidden"
               pannable
               zoomable
               // The minimap fills SVG shapes: it needs a literal colour.

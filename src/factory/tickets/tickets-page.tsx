@@ -516,7 +516,10 @@ export default function TicketsPage() {
         <div className="flex flex-wrap items-center gap-2">
           {projectId && (
             <select
-              className={cn(selectClassName, "w-auto")}
+              className={cn(
+                selectClassName,
+                "min-w-0 flex-1 sm:w-auto sm:flex-none",
+              )}
               value={allProjects ? "all" : "project"}
               onChange={(e) =>
                 setParam("scope", e.target.value === "all" ? "all" : null)
@@ -531,14 +534,20 @@ export default function TicketsPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t("search")}
-            className={cn(fieldClassName, "w-56")}
+            className={cn(
+              fieldClassName,
+              "order-first w-full sm:order-none sm:w-56",
+            )}
             data-testid="tickets-search"
           />
           {workflows.length > 1 && (
             <select
               value={workflow}
               onChange={(e) => setWorkflow(e.target.value)}
-              className={cn(selectClassName, "w-auto")}
+              className={cn(
+                selectClassName,
+                "min-w-0 flex-1 sm:w-auto sm:flex-none",
+              )}
               data-testid="tickets-workflow-filter"
             >
               <option value="">{t("allWorkflows")}</option>

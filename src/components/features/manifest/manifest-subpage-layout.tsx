@@ -1,4 +1,5 @@
-import type { ComponentType } from "react";
+import { useEffect, useRef, type ComponentType } from "react";
+import { useLocation } from "react-router";
 import { NavigationLink } from "#/components/shared/navigation-link";
 import {
   SIDEBAR_ROW_INTERACTIVE_CLASS,
@@ -37,7 +38,14 @@ interface ManifestSubpageLayoutProps {
   fullWidth?: boolean;
 }
 
-function SubPageNavLink({ item }: { item: SubPageNavItem }) {
+function SubPageNavLink({
+  item,
+  mobile = false,
+}: {
+  item: SubPageNavItem;
+  /** factory: in the mobile strip, full labels that scroll sideways instead of truncating. */
+  mobile?: boolean;
+}) {
   return (
     <NavigationLink
       to={item.to}
@@ -46,7 +54,9 @@ function SubPageNavLink({ item }: { item: SubPageNavItem }) {
       className={({ isActive }) =>
         cn(
           sidebarNavRowClassName(),
-          "truncate whitespace-nowrap",
+          mobile
+            ? "w-auto shrink-0 whitespace-nowrap"
+            : "truncate whitespace-nowrap",
           isActive
             ? SIDEBAR_ROW_INTERACTIVE_CLASS.active
             : SIDEBAR_ROW_INTERACTIVE_CLASS.idle,
@@ -56,7 +66,7 @@ function SubPageNavLink({ item }: { item: SubPageNavItem }) {
       <span className="shrink-0 flex items-center justify-center">
         <item.Icon width={16} height={16} aria-hidden />
       </span>
-      <span className="truncate">{item.label}</span>
+      <span className={mobile ? undefined : "truncate"}>{item.label}</span>
     </NavigationLink>
   );
 }
@@ -74,6 +84,14 @@ export function ManifestSubpageLayout({
   children,
   fullWidth = false,
 }: ManifestSubpageLayoutProps) {
+  // factory: keep the active tab of the mobile strip in view when the route changes.
+  const mobileNav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    mobileNav.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView?.({ block: "nearest", inline: "center" });
+  }, [pathname]);
   return (
     <div className="flex h-full gap-4 lg:gap-10 lg:pl-10">
       <aside
@@ -92,7 +110,8 @@ export function ManifestSubpageLayout({
       <main
         className={cn(
           settingsLikeMainScrollClassName,
-          "h-full",
+          // factory: the app's mobile header is already above; less top space on phones.
+          "h-full pt-3 lg:pt-8",
           fullWidth && "overflow-y-hidden pb-4",
         )}
       >
@@ -103,11 +122,12 @@ export function ManifestSubpageLayout({
           )}
         >
           <nav
+            ref={mobileNav}
             data-testid={`${navTestIdBase}-mobile`}
-            className="lg:hidden flex gap-1 overflow-x-auto border-b border-border pb-2"
+            className="lg:hidden -mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 pb-2 [scrollbar-width:none]"
           >
             {items.map((item) => (
-              <SubPageNavLink key={item.to} item={item} />
+              <SubPageNavLink key={item.to} item={item} mobile />
             ))}
           </nav>
           {children}

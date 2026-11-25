@@ -2,6 +2,7 @@
  * Right-hand side of the editor: the inspector (selected node, or the workflow's
  * settings, palette and actions) and, for a project's workflow, its runs.
  */
+import React from "react";
 import { Link } from "react-router";
 import { MessageSquare } from "lucide-react";
 import { cn } from "#/utils/utils";
@@ -69,6 +70,13 @@ export function SidePanels({
 }) {
   const t = useFactoryT();
   const { def, summary, readOnly, panel, setPanel, selectedNode } = editor;
+  // Phones: the panel sits under the canvas; bring a tapped node's form into view.
+  const aside = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    if (!selectedNode || !window.matchMedia?.("(max-width: 767px)").matches)
+      return;
+    aside.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [selectedNode]);
   if (!def) return null;
   const node = def.nodes.find((n) => n.id === selectedNode) ?? null;
   const project = scope.kind === "project" ? scope.project : null;
@@ -80,7 +88,8 @@ export function SidePanels({
   const current = project ? panel : "inspect";
   return (
     <aside
-      className="flex w-80 shrink-0 flex-col border-l border-border"
+      ref={aside}
+      className="flex w-full shrink-0 flex-col border-t border-border md:w-80 md:border-t-0 md:border-l"
       data-testid="wf-side"
     >
       <div className="flex border-b border-border" role="tablist">
@@ -103,7 +112,7 @@ export function SidePanels({
           </button>
         ))}
       </div>
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="custom-scrollbar min-h-0 flex-1 p-4 md:overflow-y-auto">
         {current === "runs" && project && (
           <RunsPanel project={project} runs={editor.workflowRuns} />
         )}
