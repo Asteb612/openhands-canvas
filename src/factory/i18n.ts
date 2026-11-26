@@ -184,6 +184,22 @@ const BASE = {
     "Retry #{issue} with workflow {wf}?",
   ],
   retried: ["#{issue} relancé", "#{issue} restarted"],
+  resumeRun: ["Reprendre…", "Resume…"],
+  resumeTitle: [
+    "Reprendre le run {id} à une étape",
+    "Resume run {id} at a step",
+  ],
+  resumeHint: [
+    "Même branche, même espace de travail, même conversation : rien n'est refait avant l'étape choisie, et chaque boucle repart avec son nombre de passages.",
+    "Same branch, workspace and conversation: nothing before the chosen step is redone, and every loop gets its full number of passes again.",
+  ],
+  resumeNode: ["Étape de reprise", "Resume at"],
+  resumeComment: [
+    "Consigne pour l'agent (facultatif)",
+    "Note for the agent (optional)",
+  ],
+  resumeConfirm: ["Reprendre", "Resume"],
+  resumed: ["Run {id} repris à « {node} »", "Run {id} resumed at “{node}”"],
   opensWhenPicked: [
     "La conversation s'ouvrira à la prise en charge.",
     "The conversation opens when the factory picks it up.",

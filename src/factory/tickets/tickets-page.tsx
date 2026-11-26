@@ -27,6 +27,7 @@ import { since } from "../format";
 import { useFactoryT } from "../i18n";
 import { conversationPath, useSelectedProject } from "../project-context";
 import { RunStateChip } from "../run-status";
+import { useResume } from "../resume-run";
 import { isTerminal } from "../states";
 import { splitTask, useFactoryTaskOptions } from "../task-type";
 import {
@@ -65,6 +66,7 @@ function TicketCard({
 }) {
   const t = useFactoryT();
   const { ask, modal, retry, retrying } = useRetry(run);
+  const resume = useResume(run);
   const subject = useRunSubject()(run);
   const scheduled = isScheduledRun(run);
   const ref = React.useRef<HTMLLIElement>(null);
@@ -162,12 +164,23 @@ function TicketCard({
         <Link to={editor} className={textActionClassName}>
           {t("workflow")}
         </Link>
+        {resume.canResume && (
+          <button
+            type="button"
+            onClick={resume.open}
+            disabled={resume.resuming}
+            className={cn(textActionClassName, "ml-auto")}
+            data-testid={`ticket-resume-${run.id}`}
+          >
+            {t("resumeRun")}
+          </button>
+        )}
         {run.state === "FAILED" && (
           <button
             type="button"
             onClick={retry}
             disabled={retrying}
-            className={cn(textActionClassName, "ml-auto")}
+            className={cn(textActionClassName, !resume.canResume && "ml-auto")}
             data-testid={`ticket-retry-${run.id}`}
           >
             {t("retry")}
@@ -175,6 +188,7 @@ function TicketCard({
         )}
       </div>
       {modal}
+      {resume.modal}
     </li>
   );
 }

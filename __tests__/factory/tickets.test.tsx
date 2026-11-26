@@ -113,6 +113,7 @@ const RUNS: FactoryRun[] = [
     state: "FAILED",
     title: "Historique",
     failureMessage: "maxVisits atteint",
+    branch: "factory/9005-historique",
   }),
   run({
     id: 5,
@@ -346,6 +347,23 @@ describe("tickets page", () => {
           });
         if (url.endsWith("/factory-api/runs/1/decide"))
           return json({ ok: true, via: "canvas" });
+        if (url.includes("/workflows/bugfix/versions/1"))
+          return json({
+            definition: {
+              nodes: [
+                { id: "start", type: "trigger" },
+                { id: "fix", type: "agent", label: "Correctif" },
+                { id: "tests", type: "command", label: "Tests" },
+                { id: "critic", type: "review", label: "Revue critique" },
+                { id: "done", type: "end" },
+              ],
+            },
+          });
+        if (url.endsWith("/factory-api/runs/4/resume"))
+          return json({
+            ok: true,
+            run: { id: 4, state: "ACTIVE", node: "critic" },
+          });
         return json({ runId: 9 });
       }) as typeof fetch,
     );
@@ -500,6 +518,34 @@ describe("tickets page", () => {
           (c) => c.method === "POST" && c.url.endsWith("/factory-api/runs"),
         )?.body,
       ).toEqual({ projectId: "autoriz", issue: 9005, workflowId: "bugfix" }),
+    );
+  });
+
+  it("resumes a failed run at a chosen step, defaulting to where it stopped", async () => {
+    await renderPage();
+    await userEvent.click(await screen.findByTestId("ticket-resume-4"));
+    const select = (await screen.findByTestId(
+      "resume-node",
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe("fix"));
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      "fix",
+      "tests",
+      "critic",
+    ]);
+    await userEvent.selectOptions(select, "critic");
+    await userEvent.type(
+      screen.getByTestId("resume-comment"),
+      "pièces jointes faites",
+    );
+    await userEvent.click(await screen.findByTestId("confirm-button"));
+    await waitFor(() =>
+      expect(
+        calls.find((c) => c.url.endsWith("/factory-api/runs/4/resume"))?.body,
+      ).toEqual({
+        node: "critic",
+        comment: "pièces jointes faites",
+      }),
     );
   });
 });

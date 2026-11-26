@@ -9,7 +9,30 @@ import { useFactoryTicket, type FactoryTicket } from "./ticket";
 import { TicketSteps } from "./ticket-steps";
 import { workflowEditorLink } from "./conversation-banner";
 import { WorkflowPreview } from "./workflows/workflow-preview";
-import { Notice, StateMessage, textActionClassName } from "./ui";
+import { useResume } from "./resume-run";
+import type { FactoryRun } from "./api";
+import { Button, Notice, StateMessage, textActionClassName } from "./ui";
+
+/** A failed run of this conversation: resume it at a step (nothing before is redone). */
+function ResumeAction({ run }: { run: FactoryRun }) {
+  const t = useFactoryT();
+  const resume = useResume(run);
+  if (!resume.canResume) return null;
+  return (
+    <div>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={resume.open}
+        isDisabled={resume.resuming}
+        testId="factory-resume"
+      >
+        {t("resumeRun")}
+      </Button>
+      {resume.modal}
+    </div>
+  );
+}
 
 export function FactoryTicketView({
   ticket,
@@ -135,6 +158,7 @@ export default function FactoryTicketTab() {
         runId={run?.state === "HUMAN" ? run.id : undefined}
         project={run?.project}
       />
+      {run?.state === "FAILED" && <ResumeAction run={run} />}
     </div>
   );
 }

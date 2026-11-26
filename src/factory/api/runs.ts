@@ -81,3 +81,20 @@ export function useDecide() {
     meta: QUIET,
   });
 }
+
+/** Resume a FAILED run at a node of its pinned workflow (same branch, workspace, conversation). */
+export function useResumeRun() {
+  const invalidate = useInvalidateRuns();
+  return useMutation({
+    mutationFn: (v: { runId: number; node: string; comment: string }) =>
+      factoryFetch<{
+        ok: true;
+        run: { id: number; state: string; node: string };
+      }>(`/runs/${v.runId}/resume`, {
+        method: "POST",
+        body: { node: v.node, comment: v.comment },
+      }),
+    onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
