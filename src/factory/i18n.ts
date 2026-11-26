@@ -320,6 +320,10 @@ const BASE = {
   // banner
   showGraph: ["Voir le graphe", "Show graph"],
   hideGraph: ["Masquer le graphe", "Hide graph"],
+  speckitTasks: ["Tâches Spec Kit", "Spec Kit tasks"],
+  speckitProgress: ["{done}/{total} faites", "{done}/{total} done"],
+  speckitDone: ["faite", "done"],
+  speckitTodo: ["à faire", "to do"],
   bannerMore: ["Afficher les détails", "Show details"],
   bannerLess: ["Masquer les détails", "Hide details"],
   editWorkflow: ["Modifier le workflow", "Edit the workflow"],

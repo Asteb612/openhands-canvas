@@ -82,3 +82,31 @@ describe("DiffChangeList", () => {
     expect(screen.queryByTestId("file-diff-viewer")).not.toBeInTheDocument();
   });
 });
+
+describe("buildDiffTree (factory: tree view)", () => {
+  it("groups by folder, compacts single-child chains, sorts folders and files", async () => {
+    const { buildDiffTree } = await import(
+      "#/components/features/diff-viewer/diff-change-list"
+    );
+    const tree = buildDiffTree([
+      { path: "backend/src/features/activity/b.ts", status: "M" },
+      { path: "backend/src/features/activity/a.ts", status: "A" },
+      { path: "backend/src/features/authz/c.ts", status: "M" },
+      { path: "README.md", status: "M" },
+      { path: "R old/x.ts frontend/y.ts", status: "R" },
+    ]);
+    expect(tree.count).toBe(5);
+    expect(tree.files.map((f) => f.name)).toEqual(["README.md"]);
+    expect(tree.folders.map((f) => [f.name, f.count])).toEqual([
+      ["backend/src/features", 3],
+      ["frontend", 1],
+    ]);
+    const features = tree.folders[0];
+    expect(features.folders.map((f) => f.name)).toEqual(["activity", "authz"]);
+    expect(features.folders[0].files.map((f) => f.name)).toEqual([
+      "a.ts",
+      "b.ts",
+    ]);
+    expect(tree.folders[1].files[0].name).toBe("y.ts");
+  });
+});

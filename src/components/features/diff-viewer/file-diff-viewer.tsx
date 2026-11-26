@@ -230,6 +230,8 @@ export interface FileDiffViewerProps {
   isExpanded?: boolean;
   /** Required with `isExpanded` for controlled accordion lists. */
   onToggle?: () => void;
+  /** Shown instead of the full path in the header (tree view: the file name). */
+  label?: string;
 }
 
 export function FileDiffViewer({
@@ -238,6 +240,7 @@ export function FileDiffViewer({
   commit,
   isExpanded: controlledExpanded,
   onToggle,
+  label,
 }: FileDiffViewerProps) {
   const { t } = useTranslation("openhands");
   const colorTheme = useColorTheme();
@@ -441,8 +444,11 @@ export function FileDiffViewer({
               statusIcon
             )}
           </span>
-          <strong className="min-w-0 flex-1 truncate font-medium">
-            {filePath}
+          <strong
+            className="min-w-0 flex-1 truncate font-medium"
+            title={label ? filePath : undefined}
+          >
+            {label ?? filePath}
           </strong>
           {showViewModeToggle && (
             <span

@@ -11,6 +11,7 @@ import { planComponents } from "#/components/features/markdown/plan-components";
 import { useHandlePlanClick } from "#/hooks/use-handle-plan-click";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useReadConversationFile } from "#/hooks/mutation/use-read-conversation-file";
+import { SpeckitTasksPanel, useSpeckitTasks } from "#/factory/speckit-tasks";
 
 function PlannerTab() {
   const { t } = useTranslation("openhands");
@@ -30,6 +31,11 @@ function PlannerTab() {
   } = useConversationStore();
   const { data: conversation } = useActiveConversation();
   const { mutate: readConversationFile } = useReadConversationFile();
+  // Factory fork: the Spec Kit tasks of the workspace, above the plan.
+  const { data: speckitTasks } = useSpeckitTasks(
+    conversation?.id,
+    conversation?.workspace?.working_dir,
+  );
 
   React.useEffect(() => {
     // Prefer the planner helper's own id — it's where PLAN.md is canonically
@@ -68,16 +74,20 @@ function PlannerTab() {
   const { handlePlanClick, hasPlanner, isCreatingConversation } =
     useHandlePlanClick();
 
-  if (planContent !== null && planContent !== undefined) {
+  const hasPlan = planContent !== null && planContent !== undefined;
+  if (hasPlan || speckitTasks) {
     return (
       <div
         ref={scrollContainerRef}
         onScroll={(e) => onChatBodyScroll(e.currentTarget)}
-        className="flex flex-col w-full h-full p-4 overflow-auto"
+        className="flex flex-col w-full h-full gap-4 p-4 overflow-auto"
       >
-        <MarkdownRenderer includeStandard components={planComponents}>
-          {planContent}
-        </MarkdownRenderer>
+        {speckitTasks && <SpeckitTasksPanel tasks={speckitTasks} />}
+        {hasPlan && (
+          <MarkdownRenderer includeStandard components={planComponents}>
+            {planContent}
+          </MarkdownRenderer>
+        )}
       </div>
     );
   }
