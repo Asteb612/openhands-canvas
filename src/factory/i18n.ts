@@ -320,6 +320,26 @@ const BASE = {
   // banner
   showGraph: ["Voir le graphe", "Show graph"],
   hideGraph: ["Masquer le graphe", "Hide graph"],
+  outcomeHintApprove: [
+    "Valide et passe à l'étape suivante.",
+    "Approves and moves on to the next step.",
+  ],
+  outcomeHintChanges: [
+    "Renvoie à l'agent avec ton commentaire.",
+    "Sends it back to the agent with your comment.",
+  ],
+  outcomeHintReject: ["Arrête le run.", "Stops the run."],
+  decisionComment: [
+    "Ton commentaire (facultatif, transmis à l'agent)",
+    "Your comment (optional, passed on to the agent)",
+  ],
+  decisionNeedsComment: ["commentaire requis", "comment required"],
+  decisionFiles: ["Relire les fichiers ({n})", "Review the files ({n})"],
+  decisionMore: ["Voir tout", "Show all"],
+  decisionSentInline: [
+    "Décision envoyée : {label}. La factory reprend au prochain cycle.",
+    "Decision sent: {label}. The factory resumes on its next cycle.",
+  ],
   speckitTasks: ["Tâches Spec Kit", "Spec Kit tasks"],
   speckitProgress: ["{done}/{total} faites", "{done}/{total} done"],
   speckitDone: ["faite", "done"],

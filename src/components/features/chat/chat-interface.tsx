@@ -1,4 +1,5 @@
 import { useSessionActivities } from "#/hooks/use-session-activities";
+import { FactoryDecisionForm } from "#/factory/decision-form"; // factory
 import { useSessionActivityStore } from "#/stores/session-activity-store";
 import { ChatProgressContext } from "#/context/chat-progress-context";
 import {
@@ -907,6 +908,8 @@ export function ChatInterface({
             {/* Goal-loop status sits at the end of the message flow — above the
               composer and its typing indicator — so progress stays in view. */}
             <GoalStatusBanner conversationId={conversationId} />
+            {/* factory: the pending human decision of a ticket, as a form */}
+            <FactoryDecisionForm />
           </div>
 
           <div className={CHAT_COMPOSER_CLASS_NAME}>
