@@ -2,11 +2,8 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { I18nKey } from "#/i18n/declaration";
 import { AccordionPanel } from "./accordion-panel";
-import {
-  DiffChangeList,
-  isFactoryInternal,
-  type DiffChangeListItem,
-} from "./diff-change-list";
+import { DiffChangeList, type DiffChangeListItem } from "./diff-change-list";
+import { isFactoryInternal } from "./diff-paths";
 
 const EMPTY_COMMIT_SHA_PLACEHOLDER = "-";
 /** Base key for i18next pluralization (`_one` / `_other` suffixes). */

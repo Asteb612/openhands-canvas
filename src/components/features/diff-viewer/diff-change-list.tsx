@@ -3,6 +3,9 @@ import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import type { GitChangeStatus } from "#/api/open-hands.types";
 import { cn } from "#/utils/utils";
 import { FileDiffViewer } from "./file-diff-viewer";
+import { displayPath, isFactoryInternal } from "./diff-paths";
+
+export { displayPath, isFactoryInternal };
 
 export interface DiffChangeListItem {
   path: string;
@@ -25,20 +28,6 @@ export interface DiffTreeFolder {
   folders: DiffTreeFolder[];
   files: { name: string; change: DiffChangeListItem }[];
   count: number;
-}
-
-/** Path shown for a change: the new path of a rename ("R old new"). */
-export function displayPath(change: DiffChangeListItem): string {
-  if (change.status === "R") {
-    const parts = change.path.split(/\s+/).slice(1);
-    return parts[parts.length - 1] ?? change.path;
-  }
-  return change.path;
-}
-
-/** Factory fork: orchestrator files (.factory/: ticket card, COMMANDS.md...) are not the agent's work. */
-export function isFactoryInternal(change: DiffChangeListItem): boolean {
-  return displayPath(change).split("/").includes(".factory");
 }
 
 /**
