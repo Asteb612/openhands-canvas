@@ -158,7 +158,9 @@ export default function FactoryTicketTab() {
         runId={run?.state === "HUMAN" ? run.id : undefined}
         project={run?.project}
       />
-      {run?.state === "FAILED" && <ResumeAction run={run} />}
+      {(run?.state === "FAILED" || run?.state === "CANCELLED") && (
+        <ResumeAction run={run} />
+      )}
     </div>
   );
 }

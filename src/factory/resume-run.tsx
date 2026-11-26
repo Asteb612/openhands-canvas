@@ -1,9 +1,12 @@
 /**
- * Resume a failed run at a step of its pinned workflow (orchestrator POST
+ * Resume a failed or cancelled run at a step of its pinned workflow (orchestrator POST
  * /runs/:id/resume): unlike "Retry", nothing before that step is redone.
  */
 import React from "react";
-import { displaySuccessToast } from "#/utils/custom-toast-handlers";
+import {
+  displayErrorToast,
+  displaySuccessToast,
+} from "#/utils/custom-toast-handlers";
 import {
   reportFactoryError,
   useResumeRun,
@@ -102,7 +105,9 @@ export function useResume(run: FactoryRun) {
     choice.current = c;
   }, []);
   const canResume =
-    run.state === "FAILED" && !!run.conversationId && !!run.branch;
+    (run.state === "FAILED" || run.state === "CANCELLED") &&
+    !!run.conversationId &&
+    !!run.branch;
   const open = () => {
     choice.current = { node: "", comment: "" };
     ask(
@@ -114,9 +119,11 @@ export function useResume(run: FactoryRun) {
           { runId: run.id, node, comment },
           {
             onSuccess: (r) =>
-              displaySuccessToast(
-                t("resumed", { id: run.id, node: r.run.node }),
-              ),
+              r.warning
+                ? displayErrorToast(r.warning)
+                : displaySuccessToast(
+                    t("resumed", { id: run.id, node: r.run.node }),
+                  ),
             onError: reportFactoryError,
           },
         );

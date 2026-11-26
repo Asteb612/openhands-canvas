@@ -90,6 +90,7 @@ export function useResumeRun() {
       factoryFetch<{
         ok: true;
         run: { id: number; state: string; node: string };
+        warning?: string;
       }>(`/runs/${v.runId}/resume`, {
         method: "POST",
         body: { node: v.node, comment: v.comment },
