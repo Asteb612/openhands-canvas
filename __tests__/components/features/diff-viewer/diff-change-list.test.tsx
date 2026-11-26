@@ -46,34 +46,32 @@ describe("DiffChangeList", () => {
 
     await user.click(firstToggle);
     expect(
-      screen.getAllByTestId("file-diff-viewer-outer")[0].querySelector(
-        '[data-testid="file-diff-viewer"]',
-      ),
+      screen
+        .getAllByTestId("file-diff-viewer-outer")[0]
+        .querySelector('[data-testid="file-diff-viewer"]'),
     ).toBeTruthy();
     expect(
-      screen.getAllByTestId("file-diff-viewer-outer")[1].querySelector(
-        '[data-testid="file-diff-viewer"]',
-      ),
+      screen
+        .getAllByTestId("file-diff-viewer-outer")[1]
+        .querySelector('[data-testid="file-diff-viewer"]'),
     ).toBeNull();
 
     await user.click(secondToggle);
     expect(
-      screen.getAllByTestId("file-diff-viewer-outer")[0].querySelector(
-        '[data-testid="file-diff-viewer"]',
-      ),
+      screen
+        .getAllByTestId("file-diff-viewer-outer")[0]
+        .querySelector('[data-testid="file-diff-viewer"]'),
     ).toBeNull();
     expect(
-      screen.getAllByTestId("file-diff-viewer-outer")[1].querySelector(
-        '[data-testid="file-diff-viewer"]',
-      ),
+      screen
+        .getAllByTestId("file-diff-viewer-outer")[1]
+        .querySelector('[data-testid="file-diff-viewer"]'),
     ).toBeTruthy();
   });
 
   it("collapses the open file when its header is clicked again", async () => {
     const user = userEvent.setup();
-    render(
-      <DiffChangeList changes={[{ path: "a.ts", status: "M" }]} />,
-    );
+    render(<DiffChangeList changes={[{ path: "a.ts", status: "M" }]} />);
 
     await user.click(screen.getByTestId("collapse"));
     expect(screen.getByTestId("file-diff-viewer")).toBeInTheDocument();
@@ -85,9 +83,8 @@ describe("DiffChangeList", () => {
 
 describe("buildDiffTree (factory: tree view)", () => {
   it("groups by folder, compacts single-child chains, sorts folders and files", async () => {
-    const { buildDiffTree } = await import(
-      "#/components/features/diff-viewer/diff-change-list"
-    );
+    const { buildDiffTree } =
+      await import("#/components/features/diff-viewer/diff-change-list");
     const tree = buildDiffTree([
       { path: "backend/src/features/activity/b.ts", status: "M" },
       { path: "backend/src/features/activity/a.ts", status: "A" },
@@ -108,5 +105,24 @@ describe("buildDiffTree (factory: tree view)", () => {
       "b.ts",
     ]);
     expect(tree.folders[1].files[0].name).toBe("y.ts");
+  });
+});
+
+describe("isFactoryInternal (factory: hidden .factory files)", () => {
+  it("matches .factory at any depth, and renames into it", async () => {
+    const { isFactoryInternal } =
+      await import("#/components/features/diff-viewer/diff-change-list");
+    expect(
+      isFactoryInternal({ path: ".factory/ticket.json", status: "A" }),
+    ).toBe(true);
+    expect(
+      isFactoryInternal({ path: "repo/.factory/COMMANDS.md", status: "M" }),
+    ).toBe(true);
+    expect(isFactoryInternal({ path: "src/factory/x.ts", status: "M" })).toBe(
+      false,
+    );
+    expect(
+      isFactoryInternal({ path: "R a.ts .factory/a.ts", status: "R" }),
+    ).toBe(true);
   });
 });

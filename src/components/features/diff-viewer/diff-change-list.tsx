@@ -36,6 +36,11 @@ export function displayPath(change: DiffChangeListItem): string {
   return change.path;
 }
 
+/** Factory fork: orchestrator files (.factory/: ticket card, COMMANDS.md...) are not the agent's work. */
+export function isFactoryInternal(change: DiffChangeListItem): boolean {
+  return displayPath(change).split("/").includes(".factory");
+}
+
 /**
  * Factory fork: changes as a folder tree (folders first, then files, sorted),
  * single-child folder chains compacted like VS Code ("backend/src/features").
@@ -198,7 +203,10 @@ function FolderRows({
 export function DiffChangeList({ changes, commit }: DiffChangeListProps) {
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-  const tree = useMemo(() => buildDiffTree(changes), [changes]);
+  const tree = useMemo(
+    () => buildDiffTree(changes.filter((c) => !isFactoryInternal(c))),
+    [changes],
+  );
   const toggleFolder = (path: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);

@@ -2,7 +2,11 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { I18nKey } from "#/i18n/declaration";
 import { AccordionPanel } from "./accordion-panel";
-import { DiffChangeList, type DiffChangeListItem } from "./diff-change-list";
+import {
+  DiffChangeList,
+  isFactoryInternal,
+  type DiffChangeListItem,
+} from "./diff-change-list";
 
 const EMPTY_COMMIT_SHA_PLACEHOLDER = "-";
 /** Base key for i18next pluralization (`_one` / `_other` suffixes). */
@@ -20,11 +24,13 @@ export interface UncommittedChangesRowProps {
  * contract as CommitRow.
  */
 export function UncommittedChangesRow({
-  changes,
+  changes: allChanges,
   isExpanded,
   onToggle,
 }: UncommittedChangesRowProps) {
   const { t } = useTranslation("openhands");
+  // Factory fork: the orchestrator's .factory files are not counted nor listed.
+  const changes = allChanges.filter((c) => !isFactoryInternal(c));
 
   return (
     <div data-testid="uncommitted-changes-row" className="w-full flex flex-col">
