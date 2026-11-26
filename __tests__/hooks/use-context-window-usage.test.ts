@@ -15,6 +15,12 @@ vi.mock("#/hooks/query/use-conversation-metrics", () => ({
     useConversationMetricsMock(...args),
 }));
 
+const useAcpContextFillMock = vi.fn(() => ({ data: null }));
+
+vi.mock("#/factory/acp-context", () => ({
+  useAcpContextFill: () => useAcpContextFillMock(),
+}));
+
 import { useContextWindowUsage } from "#/hooks/use-context-window-usage";
 
 const CONVERSATION = {
@@ -146,5 +152,19 @@ describe("useContextWindowUsage", () => {
       undefined,
       false,
     );
+  });
+
+  it("prefers the factory ACP relay's real fill for Claude Code conversations", () => {
+    useActiveConversationMock.mockReturnValue({ data: CONVERSATION });
+    useConversationMetricsMock.mockReturnValue({ data: undefined });
+    useMetricsStore.setState({ usage: storeUsage(1_000_000, 161) });
+    useAcpContextFillMock.mockReturnValueOnce({
+      data: { used: 412_000, size: 1_000_000 },
+    } as never);
+    const { result } = renderHook(() => useContextWindowUsage());
+    expect(result.current).toEqual({
+      perTurnToken: 412_000,
+      contextWindow: 1_000_000,
+    });
   });
 });
