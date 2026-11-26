@@ -4,6 +4,7 @@ import { openWorkspaceFile } from "#/services/canvas-ui";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
 import { DecisionPanel } from "./decision-panel";
 import { FactoryDemoGallery } from "./demo-gallery";
+import { useFactoryPreview } from "./preview-panel";
 import { useFactoryLocale, useFactoryT } from "./i18n";
 import { RunStateChip, useConversationRun } from "./run-status";
 import { useFactoryTicket, type FactoryTicket } from "./ticket";
@@ -32,6 +33,24 @@ function ResumeAction({ run }: { run: FactoryRun }) {
       </Button>
       {resume.modal}
     </div>
+  );
+}
+
+/** The project's stack preview, opened in a real browser tab (manual tests). */
+function PreviewLink() {
+  const t = useFactoryT();
+  const preview = useFactoryPreview();
+  if (!preview) return null;
+  return (
+    <a
+      href={preview.url}
+      target="_blank"
+      rel="noreferrer"
+      className="self-start text-sm underline underline-offset-2"
+      data-testid="factory-preview-link"
+    >
+      {t("decisionPreview")} ↗
+    </a>
   );
 }
 
@@ -93,6 +112,7 @@ export function FactoryTicketView({
         </p>
       )}
       <TicketSteps steps={ticket.steps} />
+      <PreviewLink />
       <FactoryDemoGallery />
       {ticket.review &&
         (runId !== undefined ? (

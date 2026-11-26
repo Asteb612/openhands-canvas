@@ -229,7 +229,11 @@ export function FactoryDecisionForm() {
         sent={sent?.node === node ? sent.label : null}
         onSend={send}
         onOpenReview={() => selectTab("ticket")}
-        onOpenPreview={preview ? () => selectTab("browser") : undefined}
+        onOpenPreview={
+          preview
+            ? () => window.open(preview.url, "_blank", "noopener,noreferrer")
+            : undefined
+        }
       />
       {modal}
     </>

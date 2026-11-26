@@ -10,7 +10,6 @@ import { LayoutGroup } from "framer-motion";
 import {
   FolderKanban,
   Gauge,
-  Globe,
   ListTodo,
   SquareChevronRight,
   Ticket,
@@ -146,15 +145,9 @@ export function ConversationTabs({
       label: t(CONVERSATION_TAB_LABEL_KEYS.terminal),
       className: "pl-2",
     },
-    {
-      tabValue: "browser",
-      isActive: isTabActive("browser"),
-      icon: Globe,
-      onClick: () => selectTab("browser"),
-      tooltipContent: t(CONVERSATION_TAB_LABEL_KEYS.browser),
-      tooltipAriaLabel: t(CONVERSATION_TAB_LABEL_KEYS.browser),
-      label: t(CONVERSATION_TAB_LABEL_KEYS.browser),
-    },
+    // factory: no Browser tab. It shows the OpenHands browser tool's snapshots, which
+    // ACP agents (Claude Code: Playwright MCP) never produce; manual tests use the
+    // project's preview URL in a real browser tab (decision form, Ticket tab).
     {
       tabValue: "usage",
       isActive: isTabActive("usage"),

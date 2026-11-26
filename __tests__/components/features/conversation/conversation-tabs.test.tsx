@@ -292,19 +292,19 @@ describe("ConversationTabs localStorage behavior", () => {
         wrapper: createWrapper(REAL_CONVERSATION_ID),
       });
 
-      // Act: Click the browser tab
-      const browserTab = screen.getByTestId("conversation-tab-browser");
-      await user.click(browserTab);
+      // Act: Click the usage tab (factory: no Browser tab)
+      const usageTab = screen.getByTestId("conversation-tab-usage");
+      await user.click(usageTab);
 
-      // Assert: Browser tab should be selected, panel still open
-      expect(useConversationStore.getState().selectedTab).toBe("browser");
+      // Assert: Usage tab should be selected, panel still open
+      expect(useConversationStore.getState().selectedTab).toBe("usage");
       expect(useConversationStore.getState().hasRightPanelToggled).toBe(true);
 
       // Verify localStorage was updated
       const storedState = JSON.parse(
         localStorage.getItem(`conversation-state-${REAL_CONVERSATION_ID}`)!,
       );
-      expect(storedState.selectedTab).toBe("browser");
+      expect(storedState.selectedTab).toBe("usage");
     });
   });
 
@@ -704,7 +704,7 @@ describe("ConversationTabs localStorage behavior", () => {
         "aria-controls",
         CONVERSATION_TAB_PANEL_ID,
       );
-      expect(screen.getByTestId("conversation-tab-browser")).toHaveAttribute(
+      expect(screen.getByTestId("conversation-tab-usage")).toHaveAttribute(
         "aria-selected",
         "false",
       );
@@ -743,7 +743,7 @@ describe("ConversationTabs localStorage behavior", () => {
       // Inactive tabs hide their label, so without an explicit name they
       // would be announced as an unlabelled button.
       expect(
-        screen.getByRole("tab", { name: "COMMON$BROWSER" }),
+        screen.getByRole("tab", { name: "COMMON$TERMINAL" }),
       ).toBeInTheDocument();
     });
 

@@ -179,7 +179,6 @@ describe("ConversationTabsContextMenu", () => {
       "COMMON$FILES",
       "DIFF_VIEWER$COMMITS",
       "COMMON$TERMINAL",
-      "COMMON$BROWSER",
       // Local planning is now supported, so the Planner tab is a default tab.
       "COMMON$PLANNER",
     ];
@@ -188,6 +187,8 @@ describe("ConversationTabsContextMenu", () => {
     }
 
     expect(screen.queryByText("FILES$DIFF_VIEW")).not.toBeInTheDocument();
+    // factory: no Browser tab (ACP agents never feed it).
+    expect(screen.queryByText("COMMON$BROWSER")).not.toBeInTheDocument();
   });
 
   it("lists the Project tab only in a project conversation", () => {

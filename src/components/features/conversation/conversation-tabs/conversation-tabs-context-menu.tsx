@@ -14,7 +14,6 @@ import { I18nKey } from "#/i18n/declaration";
 import {
   FolderKanban,
   Gauge,
-  Globe,
   ListTodo,
   SquareChevronRight,
 } from "lucide-react";
@@ -133,7 +132,7 @@ export function ConversationTabsContextMenu({
       icon: SquareChevronRight,
       i18nKey: I18nKey.COMMON$TERMINAL,
     },
-    { tab: "browser", icon: Globe, i18nKey: I18nKey.COMMON$BROWSER },
+    // factory: no Browser tab (see conversation-tabs.tsx).
     { tab: "usage", icon: Gauge, i18nKey: I18nKey.COMMON$USAGE },
   ];
 
