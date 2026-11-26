@@ -904,5 +904,18 @@ describe("factory conversation UI", () => {
     );
     await userEvent.click(screen.getByTestId("factory-banner-decide"));
     expect(onDecide).toHaveBeenCalledOnce();
+    // Mobile: details collapsed behind a toggle, Decide stays reachable.
+    const expand = screen.getByTestId("factory-banner-expand");
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByTestId("factory-banner-steps").parentElement,
+    ).toHaveClass("hidden");
+    await userEvent.click(expand);
+    expect(expand).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByTestId("factory-banner-steps").parentElement,
+    ).not.toHaveClass("hidden");
+    await userEvent.click(screen.getByTestId("factory-banner-decide-compact"));
+    expect(onDecide).toHaveBeenCalledTimes(2);
   });
 });

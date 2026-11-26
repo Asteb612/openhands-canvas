@@ -320,6 +320,8 @@ const BASE = {
   // banner
   showGraph: ["Voir le graphe", "Show graph"],
   hideGraph: ["Masquer le graphe", "Hide graph"],
+  bannerMore: ["Afficher les détails", "Show details"],
+  bannerLess: ["Masquer les détails", "Hide details"],
   editWorkflow: ["Modifier le workflow", "Edit the workflow"],
   draft: ["(brouillon)", "(draft)"],
   graphUnavailable: [
