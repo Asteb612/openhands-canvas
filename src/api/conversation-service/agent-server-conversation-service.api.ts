@@ -1179,6 +1179,21 @@ class AgentServerConversationService {
   }
 
   /**
+   * Binary file of a local conversation's workspace (factory fork: demo screenshots,
+   * GIFs). Same path rules as `readConversationFile`; local backends only.
+   */
+  static async readConversationBinaryFile(
+    conversationId: string,
+    filePath: string,
+  ): Promise<ArrayBuffer> {
+    const workingDir = await this.resolveConversationWorkingDir(conversationId);
+    const path = requirePathInsideDirectory(filePath, workingDir);
+    return new FileClient(
+      getAgentServerClientOptions({ conversationId, workingDir }),
+    ).downloadFile(path);
+  }
+
+  /**
    * ACP session id and cwd of a conversation (`agent_state`), null for a non-ACP
    * agent or before its first turn. Factory fork: locates the context fill the ACP
    * relay writes (see `src/factory/acp-context.ts`).

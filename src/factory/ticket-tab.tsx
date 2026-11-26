@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { openWorkspaceFile } from "#/services/canvas-ui";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
 import { DecisionPanel } from "./decision-panel";
+import { FactoryDemoGallery } from "./demo-gallery";
 import { useFactoryLocale, useFactoryT } from "./i18n";
 import { RunStateChip, useConversationRun } from "./run-status";
 import { useFactoryTicket, type FactoryTicket } from "./ticket";
@@ -92,6 +93,7 @@ export function FactoryTicketView({
         </p>
       )}
       <TicketSteps steps={ticket.steps} />
+      <FactoryDemoGallery />
       {ticket.review &&
         (runId !== undefined ? (
           <DecisionPanel

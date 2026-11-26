@@ -94,7 +94,9 @@ export function FactoryDecisionFormView({
             data-testid="factory-decision-form-files"
           >
             <FileText className="size-3.5" aria-hidden />
-            {t("decisionFiles", { n: review.files.length })}
+            {review.files.some((f) => f.startsWith("specs/demo/"))
+              ? t("decisionDemo")
+              : t("decisionFiles", { n: review.files.length })}
           </button>
         )}
       </div>
