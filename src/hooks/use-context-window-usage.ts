@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import useMetricsStore from "#/stores/metrics-store";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useConversationMetrics } from "#/hooks/query/use-conversation-metrics";
+import { useAcpContextFill } from "#/factory/acp-context";
 
 export interface ContextWindowUsage {
   perTurnToken: number;
@@ -38,8 +39,13 @@ export function useContextWindowUsage(): ContextWindowUsage | null {
     conversation?.session_api_key,
     Boolean(conversation?.id),
   );
+  // Factory fork: the real fill of a Claude Code (ACP) session, when the relay wrote it.
+  const { data: acpFill } = useAcpContextFill(conversation);
 
   return useMemo(() => {
+    if (acpFill) {
+      return { perTurnToken: acpFill.used, contextWindow: acpFill.size };
+    }
     const fromStore = toContextWindowUsage(storeUsage);
     if (fromStore) {
       return fromStore;
@@ -48,5 +54,5 @@ export function useContextWindowUsage(): ContextWindowUsage | null {
     return toContextWindowUsage(
       conversationMetrics?.accumulated_token_usage ?? null,
     );
-  }, [storeUsage, conversationMetrics]);
+  }, [acpFill, storeUsage, conversationMetrics]);
 }

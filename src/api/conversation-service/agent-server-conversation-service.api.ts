@@ -1179,6 +1179,28 @@ class AgentServerConversationService {
   }
 
   /**
+   * ACP session id and cwd of a conversation (`agent_state`), null for a non-ACP
+   * agent or before its first turn. Factory fork: locates the context fill the ACP
+   * relay writes (see `src/factory/acp-context.ts`).
+   */
+  static async getAcpSession(
+    conversationId: string,
+    conversationUrl: string | null | undefined,
+    sessionApiKey?: string | null,
+  ): Promise<{ sessionId: string; cwd: string } | null> {
+    const raw = await new ConversationClient(
+      getAgentServerClientOptions({ conversationUrl, sessionApiKey }),
+    ).getConversation<unknown>(conversationId);
+    const state =
+      isRecord(raw) && isRecord(raw.agent_state) ? raw.agent_state : null;
+    const sessionId = state?.acp_session_id;
+    const cwd = state?.acp_session_cwd;
+    return typeof sessionId === "string" && typeof cwd === "string"
+      ? { sessionId, cwd }
+      : null;
+  }
+
+  /**
    * Force condensation ("compact") of the conversation history via
    * `POST /api/conversations/{id}/condense`. Calls the conversation's own
    * runtime host directly (CORS allowlisted for the Canvas origin in cloud
