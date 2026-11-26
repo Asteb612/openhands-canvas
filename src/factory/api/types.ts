@@ -165,6 +165,8 @@ export interface FactoryProject {
   commandList?: ProjectCommand[];
   /** Docker daemon in the project's agent pod (Kata VM sidecar). */
   docker?: boolean;
+  /** Dev stack preview for manual tests (deploy.preview), shown in the browser panel. */
+  preview?: { url: string; port: number } | null;
   settings?: ProjectSettings;
   config?: {
     defaultBranch: string;

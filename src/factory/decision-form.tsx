@@ -5,7 +5,7 @@
  * The Ticket tab keeps the full review (files, diff).
  */
 import React from "react";
-import { Check, FileText } from "lucide-react";
+import { Check, FileText, Globe } from "lucide-react";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
 import { useSelectConversationTab } from "#/hooks/use-select-conversation-tab";
 import { MarkdownRenderer } from "#/components/features/markdown/markdown-renderer";
@@ -15,6 +15,7 @@ import { reportFactoryError, useDecide } from "./api";
 import { needsConfirmation } from "./decision-panel";
 import { useFactoryT } from "./i18n";
 import { useConversationRun } from "./run-status";
+import { useFactoryPreview } from "./preview-panel";
 import {
   useFactoryTicket,
   type FactoryOutcome,
@@ -38,12 +39,15 @@ export function FactoryDecisionFormView({
   sent,
   onSend,
   onOpenReview,
+  onOpenPreview,
 }: {
   review: NonNullable<FactoryTicket["review"]>;
   sending: boolean;
   sent: string | null;
   onSend: (o: FactoryOutcome, comment: string) => void;
   onOpenReview?: () => void;
+  /** The project has a stack preview: open it in the browser panel. */
+  onOpenPreview?: () => void;
 }) {
   const t = useFactoryT();
   const [comment, setComment] = React.useState("");
@@ -86,6 +90,17 @@ export function FactoryDecisionFormView({
         <h3 id={titleId} className="min-w-0 flex-1 font-medium wrap-anywhere">
           {t("decisionWaiting", { what: review.what })}
         </h3>
+        {onOpenPreview && (
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            className="inline-flex shrink-0 items-center gap-1 text-xs text-muted underline underline-offset-2 hover:text-content"
+            data-testid="factory-decision-form-preview"
+          >
+            <Globe className="size-3.5" aria-hidden />
+            {t("decisionPreview")}
+          </button>
+        )}
         {onOpenReview && review.files.length > 0 && (
           <button
             type="button"
@@ -179,6 +194,7 @@ export function FactoryDecisionForm() {
   const decide = useDecide();
   const { ask, modal } = useConfirm();
   const { selectTab } = useSelectConversationTab();
+  const preview = useFactoryPreview();
   const [sent, setSent] = React.useState<{
     node: string;
     label: string;
@@ -213,6 +229,7 @@ export function FactoryDecisionForm() {
         sent={sent?.node === node ? sent.label : null}
         onSend={send}
         onOpenReview={() => selectTab("ticket")}
+        onOpenPreview={preview ? () => selectTab("browser") : undefined}
       />
       {modal}
     </>
