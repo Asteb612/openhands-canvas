@@ -10,6 +10,11 @@ import { RunStateChip, useConversationRun } from "./run-status";
 import { useFactoryTicket, type FactoryTicket } from "./ticket";
 import { TicketSteps } from "./ticket-steps";
 import { WorkflowPreview } from "./workflows/workflow-preview";
+import {
+  SPECKIT_PHASES,
+  useSpeckitProgress,
+  type SpeckitProgress,
+} from "./speckit-phase";
 import { Button, textActionClassName } from "./ui";
 
 /** Editor deep link on the ticket's workflow and current node. */
@@ -23,14 +28,66 @@ export function workflowEditorLink(
   return `/factory/workflows/${encodeURIComponent(ticket.workflow.id)}/edit${qs ? `?${qs}` : ""}`;
 }
 
+/** Spec-kit phases of the ticket: done, current (in progress or stopped), still to do. */
+export function SpeckitPhases({ progress }: { progress: SpeckitProgress }) {
+  const t = useFactoryT();
+  const { current, phases } = progress;
+  const status = {
+    started: t("phaseStarted"),
+    done: t("phaseDone"),
+    stopped: t("phaseStopped"),
+  }[current.status];
+  return (
+    <span
+      className="flex min-w-0 items-center gap-1.5 text-xs"
+      data-testid="factory-banner-phase"
+      title={t("phaseHint")}
+    >
+      <span className="shrink-0 font-medium text-content">
+        {`/speckit.${current.phase}`}
+      </span>
+      <span
+        className={cn(
+          "shrink-0",
+          current.status === "started" && "text-primary",
+          current.status === "stopped" && "text-warning",
+          current.status === "done" && "text-success",
+        )}
+      >
+        {status}
+      </span>
+      <span className="hidden items-center gap-1 md:flex" aria-hidden>
+        {SPECKIT_PHASES.map((p) => (
+          <span
+            key={p}
+            title={p}
+            className={cn(
+              "size-1.5 rounded-full",
+              p === current.phase && current.status === "started"
+                ? "animate-pulse bg-primary"
+                : phases[p] === "done"
+                  ? "bg-success"
+                  : phases[p] === "stopped"
+                    ? "bg-warning"
+                    : "bg-border",
+            )}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function FactoryBannerView({
   ticket,
   project,
   onDecide,
+  phase,
 }: {
   ticket: FactoryTicket;
   project?: string;
   onDecide: () => void;
+  phase?: SpeckitProgress | null;
 }) {
   const t = useFactoryT();
   const [showGraph, setShowGraph] = React.useState(false);
@@ -76,6 +133,7 @@ export function FactoryBannerView({
         <span className="min-w-0 truncate text-content">
           {ticket.stateLabel}
         </span>
+        {phase && <SpeckitPhases progress={phase} />}
         {ticket.pr && (
           <a
             href={ticket.pr.url}
@@ -243,6 +301,7 @@ export function FactoryConversationBanner() {
   const { data: ticket } = useFactoryTicket();
   const { conversationId } = useOptionalConversationId();
   const run = useConversationRun(conversationId ?? undefined);
+  const { data: phase } = useSpeckitProgress();
   const { selectTab, selectedTab, isRightPanelShown } =
     useSelectConversationTab();
   if (!ticket) return null;
@@ -250,6 +309,7 @@ export function FactoryConversationBanner() {
     <FactoryBannerView
       ticket={ticket}
       project={run?.project}
+      phase={phase}
       onDecide={() => {
         if (!(selectedTab === "ticket" && isRightPanelShown))
           selectTab("ticket");

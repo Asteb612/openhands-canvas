@@ -433,6 +433,18 @@ const BASE = {
   notifyfailed: ["Échec", "Failure"],
   notifyquota: ["Quota atteint", "Quota reached"],
   notifycompleted: ["Terminé", "Completed"],
+  phaseStarted: ["en cours", "in progress"],
+  wfAgentPhases: ["Phases spec-kit", "Spec-kit phases"],
+  wfAgentPhasesHint: [
+    "Phases /speckit.* que fait cette étape. Faites dans le chat pendant une validation, elles prennent la décision qui mène à cette étape et la marquent faite.",
+    "/speckit.* phases this step performs. Done in the chat during a review, they take the decision leading to this step and mark it done.",
+  ],
+  phaseDone: ["terminée", "done"],
+  phaseStopped: ["interrompue", "stopped"],
+  phaseHint: [
+    "Phase spec-kit du ticket (commandes /speckit.* dans le chat ou étape du workflow). Pendant une validation, une phase faite dans le chat fait avancer le run.",
+    "The ticket's spec-kit phase (/speckit.* commands in the chat or a workflow step). During a review, a phase done in the chat moves the run.",
+  ],
   dockerSection: ["Ressources Docker", "Docker resources"],
   dockerHint: [
     "Mémoire de l'ensemble des conteneurs Docker du pod agent, plafonnée par le sidecar lui-même : appliquée en quelques secondes, sans redémarrage, le démon garde toujours une marge. Baisser sous l'usage actuel tue des conteneurs. La limite par conteneur s'applique aux conteneurs créés ensuite (relance la stack).",

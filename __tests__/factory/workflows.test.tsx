@@ -863,6 +863,28 @@ describe("Workflows pages", () => {
 });
 
 describe("factory conversation UI", () => {
+  it("parses spec-kit phases and shows the current one in the banner", async () => {
+    const { parsePhases } = await import("#/factory/speckit-phase");
+    const { SpeckitPhases } = await import("#/factory/conversation-banner");
+    const log = [
+      { phase: "specify", status: "started", at: 1 },
+      { phase: "specify", status: "done", at: 2 },
+      { phase: "plan", status: "started", at: 3 },
+    ]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    const progress = parsePhases(`${log}\n{"phase":"pla`)!;
+    expect(progress).toEqual({
+      current: { phase: "plan", status: "started", at: 3 },
+      phases: { specify: "done", plan: "started" },
+    });
+    expect(parsePhases("")).toBeNull();
+    render(<SpeckitPhases progress={progress} />);
+    expect(screen.getByTestId("factory-banner-phase")).toHaveTextContent(
+      "/speckit.planin progress",
+    );
+  });
+
   it("banner shows workflow, state, steps and a decide action", async () => {
     const { FactoryBannerView } = await import("#/factory/conversation-banner");
     const onDecide = vi.fn();

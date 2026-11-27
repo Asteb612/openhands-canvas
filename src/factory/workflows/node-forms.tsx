@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- node configs are validated server-side */
+import { SPECKIT_PHASES } from "../speckit-phase";
 import React from "react";
 import type { WorkflowNode } from "../api";
 import { useFactoryT } from "../i18n";
@@ -194,6 +195,34 @@ function AgentForm({
           testId="wf-agent-stop-checks"
           onChange={(stopChecks) => set({ stopChecks })}
         />
+      </Field>
+      <Field label={t("wfAgentPhases")} hint={t("wfAgentPhasesHint")}>
+        <div
+          className="flex flex-wrap gap-3 text-sm"
+          data-testid="wf-agent-phases"
+        >
+          {SPECKIT_PHASES.map((p) => {
+            const list: string[] = c.phases ?? [];
+            return (
+              <label key={p} className="inline-flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  disabled={ro}
+                  checked={list.includes(p)}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? SPECKIT_PHASES.filter(
+                          (x) => x === p || list.includes(x),
+                        )
+                      : list.filter((x) => x !== p);
+                    set({ phases: next.length ? next : undefined });
+                  }}
+                />
+                <span className="font-mono text-xs">{p}</span>
+              </label>
+            );
+          })}
+        </div>
       </Field>
     </>
   );
