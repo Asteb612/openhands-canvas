@@ -42,15 +42,26 @@ function PreviewLink() {
   const preview = useFactoryPreview();
   if (!preview) return null;
   return (
-    <a
-      href={preview.url}
-      target="_blank"
-      rel="noreferrer"
-      className="self-start text-sm underline underline-offset-2"
-      data-testid="factory-preview-link"
-    >
-      {t("decisionPreview")} ↗
-    </a>
+    <div className="flex flex-wrap items-center gap-3 text-sm">
+      <a
+        href={preview.url}
+        target="_blank"
+        rel="noreferrer"
+        className="underline underline-offset-2"
+        data-testid="factory-preview-link"
+      >
+        {t("decisionPreview")} ↗
+      </a>
+      <a
+        href={`${preview.url}/__factory/stacks`}
+        target="_blank"
+        rel="noreferrer"
+        className="text-muted underline underline-offset-2"
+        data-testid="factory-preview-stacks"
+      >
+        {t("previewStacks")}
+      </a>
+    </div>
   );
 }
 
