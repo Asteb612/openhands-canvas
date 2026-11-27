@@ -53,7 +53,7 @@ function PreviewLink() {
         {t("decisionPreview")} ↗
       </a>
       <a
-        href={`${preview.url}/__factory/stacks`}
+        href={`${preview.url.replace(/\/$/, "")}/__factory/stacks`}
         target="_blank"
         rel="noreferrer"
         className="text-muted underline underline-offset-2"
