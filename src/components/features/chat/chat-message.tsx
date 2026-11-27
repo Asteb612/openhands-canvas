@@ -1,4 +1,5 @@
 import React from "react";
+import { messageAuthor } from "#/factory/conversation-colors";
 import { LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "#/utils/utils";
@@ -180,6 +181,8 @@ export function ChatMessage({
     <article
       data-testid={`${type}-message`}
       data-pending-status={pendingStatus}
+      // Factory fork: colour per author (conversation-colors.css).
+      data-factory-author={messageAuthor(type, !!isFromPlanningAgent)}
       onMouseEnter={() => {
         setIsHovering(true);
       }}

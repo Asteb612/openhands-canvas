@@ -35,6 +35,8 @@ interface GenericEventMessageProps {
   disclosureId?: string;
   /** Extra classes for the row's outer element, e.g. to adjust its margins. */
   className?: string;
+  /** Factory fork: ACP tool kind of the row (its colour, conversation-colors.css). */
+  toolKind?: string;
 }
 
 export function GenericEventMessage({
@@ -48,6 +50,7 @@ export function GenericEventMessage({
   timestamp,
   disclosureId,
   className,
+  toolKind,
 }: GenericEventMessageProps) {
   const { t, i18n } = useTranslation("openhands");
   const persistedDisclosureKey = useRowExpansionKey(disclosureId ?? "details");
@@ -156,6 +159,7 @@ export function GenericEventMessage({
         "flex flex-col gap-1.5 my-1 py-1 text-sm w-full",
         className,
       )}
+      data-factory-tool={toolKind}
     >
       {!detailsOnly && titleRow}
       {(detailsOnly || showDetails) && (

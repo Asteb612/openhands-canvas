@@ -7,7 +7,8 @@ import {
   useCanvasExtensionsRuntime,
 } from "#/components/features/canvas-extensions/canvas-extensions-runtime";
 
-const APP_TITLE = "OpenHands";
+// Factory fork: the command center's name.
+const APP_TITLE = "Software Factory";
 
 export const useAppTitle = () => {
   const appRoute = useMatch("/extensions/:extensionName/*");

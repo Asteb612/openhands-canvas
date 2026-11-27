@@ -1,7 +1,7 @@
 {
-    "name": "OpenHands",
-    "short_name": "OpenHands",
-    "description": "OpenHands AI-powered development workspace.",
+    "name": "Software Factory",
+    "short_name": "Factory",
+    "description": "Software Factory: tickets, workflows and agents.",
     "start_url": "./",
     "scope": "./",
     "categories": ["productivity"],

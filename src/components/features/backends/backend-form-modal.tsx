@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { ServerClient } from "@openhands/typescript-client/clients";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
+// Factory fork: the factory mark in the modal header.
+import FactoryLogo from "#/factory/brand/factory-logo.svg?react";
 import DigitalOceanLogo from "#/assets/branding/digitalocean-logo.svg?react";
 import { getMarsBridge } from "#/api/mars/mars-tunnel-backend";
 import { DigitalOceanConnectPanel } from "./managed-agents/digitalocean-connect-panel";
@@ -1010,10 +1012,10 @@ function CloudLoginColumn({
     <div className="flex w-full min-w-0 flex-col items-center gap-3">
       {showBranding ? (
         <div className="flex flex-col items-center gap-1">
-          <OpenHandsLogoWhite
-            width={56}
-            height={56}
-            className="text-contrast [&_path:not([fill=transparent])]:fill-current"
+          <FactoryLogo
+            width={63}
+            height={42}
+            className="text-contrast"
             aria-hidden
           />
 

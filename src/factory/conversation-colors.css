@@ -1,0 +1,42 @@
+/* Factory fork: colour in the conversations (see conversation-colors.ts). Hues are
+   mixed at low opacity into the theme's own colours, so every Canvas theme keeps
+   its contrast. Unlayered: wins over the Tailwind utilities of the same rows. */
+:root {
+  --factory-user-hue: #6366f1;
+  --factory-agent-hue: #14b8a6;
+}
+
+[data-factory-author="user"] {
+  background: color-mix(in srgb, var(--factory-user-hue) 16%, var(--color-tertiary));
+  border: 1px solid color-mix(in srgb, var(--factory-user-hue) 38%, transparent);
+}
+
+[data-factory-author="agent"] {
+  border-left: 2px solid color-mix(in srgb, var(--factory-agent-hue) 60%, transparent);
+  border-radius: 0;
+  padding-left: 0.75rem;
+}
+
+/* Tool calls, by ACP tool kind. */
+[data-factory-tool="execute"] { --factory-tool: #f59e0b; }
+[data-factory-tool="edit"],
+[data-factory-tool="move"] { --factory-tool: #10b981; }
+[data-factory-tool="delete"] { --factory-tool: #ef4444; }
+[data-factory-tool="read"] { --factory-tool: #38bdf8; }
+[data-factory-tool="search"] { --factory-tool: #a78bfa; }
+[data-factory-tool="fetch"] { --factory-tool: #14b8a6; }
+[data-factory-tool="think"] { --factory-tool: #f472b6; }
+
+[data-factory-tool="execute"],
+[data-factory-tool="edit"],
+[data-factory-tool="move"],
+[data-factory-tool="delete"],
+[data-factory-tool="read"],
+[data-factory-tool="search"],
+[data-factory-tool="fetch"],
+[data-factory-tool="think"] {
+  border-left: 3px solid color-mix(in srgb, var(--factory-tool) 85%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--factory-tool) 15%, transparent), transparent 70%);
+  border-radius: 0 0.375rem 0.375rem 0;
+  padding-left: 0.5rem;
+}

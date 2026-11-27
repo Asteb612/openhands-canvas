@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import OpenHandsLogo from "#/assets/branding/openhands-logo.svg?react";
+// Factory fork: the factory mark instead of the OpenHands one.
+import OpenHandsLogo from "#/factory/brand/factory-logo.svg?react";
 import { NavigationLink } from "#/components/shared/navigation-link";
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
@@ -34,10 +35,7 @@ export function OpenHandsLogoButton({
       <OpenHandsLogo
         width={logoWidth}
         height={logoHeight}
-        className={cn(
-          "shrink-0 text-contrast [&_path[fill=white]]:fill-current",
-          logoClassName,
-        )}
+        className={cn("shrink-0 text-contrast", logoClassName)}
       />
     </NavigationLink>
   );

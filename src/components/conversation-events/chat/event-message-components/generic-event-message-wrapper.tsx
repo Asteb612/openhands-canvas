@@ -30,6 +30,7 @@ import SkillsIcon from "#/icons/skills.svg?react";
 import { isMarkdownFileEditorEvent } from "#/components/features/chat/tool-visualizers/primitives/markdown-file-preview";
 import { CollapsibleThinking, StepThinking } from "./collapsible-thinking";
 import { MarkdownRenderer } from "../../../features/markdown/markdown-renderer";
+import { eventToolKind } from "#/factory/conversation-colors";
 
 interface GenericEventMessageWrapperProps {
   event: OpenHandsEvent | SkillReadyEvent;
@@ -146,6 +147,7 @@ export function GenericEventMessageWrapper({
       initiallyExpanded={initiallyExpanded}
       timestamp={event.timestamp}
       className={standaloneRowClass}
+      toolKind={eventToolKind(event, correspondingAction)}
       titleTrailing={
         !isSkillReadyEvent(event) && isUserRejectObservation(event) ? (
           <span
