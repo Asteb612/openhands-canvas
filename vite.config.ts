@@ -121,6 +121,8 @@ export default defineConfig(({ mode }) => {
     VITE_FACTORY_API_TARGET,
     // factory: the dev command-center proxy serving /agents/<project> (software-factory/dev).
     VITE_FACTORY_AGENTS_TARGET,
+    // factory: a local preview proxy serving /preview/<project>/ (software-factory/dev).
+    VITE_FACTORY_PREVIEW_TARGET,
   } = loadEnv(mode, process.cwd());
 
   const isLibraryBuild = process.env.BUILD_LIB === "true";
@@ -458,6 +460,17 @@ export default defineConfig(({ mode }) => {
               "/agents": {
                 target: VITE_FACTORY_AGENTS_TARGET,
                 changeOrigin: true,
+                ws: true,
+              },
+            }
+          : {}),
+        // factory: /preview/* -> the local preview proxy (same paths, Host kept so
+        // its frame page and worker see the dev server's origin).
+        ...(VITE_FACTORY_PREVIEW_TARGET
+          ? {
+              "/preview": {
+                target: VITE_FACTORY_PREVIEW_TARGET,
+                changeOrigin: false,
                 ws: true,
               },
             }

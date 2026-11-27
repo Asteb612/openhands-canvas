@@ -10,6 +10,7 @@ import { LayoutGroup } from "framer-motion";
 import {
   FolderKanban,
   Gauge,
+  Globe,
   ListTodo,
   SquareChevronRight,
   Ticket,
@@ -39,6 +40,8 @@ import { AgentState } from "#/types/agent-state";
 import { Typography } from "#/ui/typography";
 import { mobileTopBarIconClassName } from "#/utils/mobile-top-bar-icon-button-classes";
 import { useFactoryTicket } from "#/factory/ticket"; // factory: Ticket tab
+import { useFactoryPreview } from "#/factory/preview-panel"; // factory: Preview tab
+import { useFactoryT } from "#/factory/i18n";
 import { useWorkflowSessionId } from "#/factory/workflows/workflow-session"; // factory: workflow session
 
 // factory: no Build button (the orchestrator drives the steps).
@@ -63,6 +66,8 @@ export function ConversationTabs({
   const { hasTaskList } = useTaskList();
   const projectId = useConversationProjectId();
   const { data: factoryTicket } = useFactoryTicket(); // factory: Ticket tab
+  const factoryPreview = useFactoryPreview(); // factory: Preview tab
+  const ft = useFactoryT();
   const workflowSession = useWorkflowSessionId(); // factory: workflow session
   const { backend } = useActiveBackend();
 
@@ -145,9 +150,8 @@ export function ConversationTabs({
       label: t(CONVERSATION_TAB_LABEL_KEYS.terminal),
       className: "pl-2",
     },
-    // factory: no Browser tab. It shows the OpenHands browser tool's snapshots, which
-    // ACP agents (Claude Code: Playwright MCP) never produce; manual tests use the
-    // project's preview URL in a real browser tab (decision form, Ticket tab).
+    // factory: no Browser tab (OpenHands browser tool snapshots, which ACP agents never
+    // produce); the browser slot shows the ticket's stack preview instead (below).
     {
       tabValue: "usage",
       isActive: isTabActive("usage"),
@@ -183,6 +187,19 @@ export function ConversationTabs({
       tooltipContent: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
       tooltipAriaLabel: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
       label: t(CONVERSATION_TAB_LABEL_KEYS.ticket),
+    });
+  }
+
+  // factory: the ticket's stack preview, after the Ticket tab (browser slot).
+  if (factoryPreview) {
+    tabs.splice(factoryTicket ? 1 : 0, 0, {
+      tabValue: "browser",
+      isActive: isTabActive("browser"),
+      icon: Globe,
+      onClick: () => selectTab("browser"),
+      tooltipContent: ft("previewTab"),
+      tooltipAriaLabel: ft("previewTab"),
+      label: ft("previewTab"),
     });
   }
 
