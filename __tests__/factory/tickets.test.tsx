@@ -659,14 +659,17 @@ describe("project page", () => {
             enabled: true,
             resizable: true,
             default: "10Gi",
-            max: "12Gi",
+            podLimit: "12Gi",
+            max: "11520Mi",
             sidecarMemory: body.sidecarMemory ?? null,
             containerMemory: null,
             containerMemoryDefault: "2Gi",
             live: {
-              spec: body.sidecarMemory ?? "10Gi",
-              applied: "10Gi",
-              resize: null,
+              limit: body.sidecarMemory ?? "10Gi",
+              source: body.sidecarMemory ? "owner" : "default",
+              current: 3 * 2 ** 30,
+              oomKills: body.sidecarMemory ? 0 : 1,
+              at: 1,
             },
             liveError: null,
           };
@@ -764,7 +767,7 @@ describe("project page", () => {
     );
   });
 
-  it("resizes the Docker sidecar within the project's max", async () => {
+  it("sets the Docker containers' memory within the max", async () => {
     (globalThis as { __projects?: FactoryProject[] }).__projects = [
       project({ docker: true }),
     ];
@@ -775,22 +778,26 @@ describe("project page", () => {
       .map((o) => o.textContent);
     expect(options[0]).toBe("Default (10Gi)");
     expect(options.slice(1)).toEqual(
-      Array.from({ length: 11 }, (_, i) => `${i + 2}Gi`),
+      Array.from({ length: 11 }, (_, i) => `${i + 1}Gi`),
     );
-    expect(screen.getByTestId("docker-live")).toHaveTextContent(
-      "Applied: 10Gi",
-    );
-    await userEvent.selectOptions(select, "12Gi");
+    const live = screen.getByTestId("docker-live");
+    expect(live).toHaveTextContent("Applied: 10Gi");
+    expect(live).toHaveTextContent("used: 3.0 Gio");
+    expect(live).toHaveTextContent("1 container(s) OOM-killed");
+    await userEvent.selectOptions(select, "11Gi");
     await waitFor(() =>
       expect(
         calls.find(
           (c) =>
             c.method === "PUT" && c.url.endsWith("/projects/autoriz/docker"),
         )?.body,
-      ).toEqual({ sidecarMemory: "12Gi" }),
+      ).toEqual({ sidecarMemory: "11Gi" }),
     );
-    // Spec 12Gi, applied 10Gi: the kubelet is still resizing.
-    expect(await screen.findByText("Resizing")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("docker-live")).toHaveTextContent(
+        "Applied: 11Gi",
+      ),
+    );
   });
 
   it("hides the Docker resources without Docker", async () => {

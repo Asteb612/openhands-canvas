@@ -150,22 +150,23 @@ export interface ProjectSettings {
 /** Docker resources of a project's agent pod (GET /projects/:id/docker). */
 export interface ProjectDocker {
   enabled: boolean;
-  /** The sidecar can be resized live (in a cluster, memMax set in the project file). */
+  /** The Docker sidecar publishes its status (it applies what is set). */
   resizable: boolean;
-  /** Terraform default (deploy.docker.memLimit) and the most Canvas may set (memMax). */
+  /** Terraform: default cap of the containers (memDefault) and the pod limit. */
   default: string | null;
+  podLimit: string | null;
+  /** Most that can be set: pod limit minus the daemon's margin. */
   max: string | null;
   sidecarMemory: string | null;
   containerMemory: string | null;
   containerMemoryDefault: string;
   live: {
-    spec: string | null;
-    applied: string | null;
-    resize: {
-      status: "pending" | "in_progress";
-      reason?: string;
-      message?: string;
-    } | null;
+    /** Applied cap (null = none), where it comes from, usage in bytes. */
+    limit: string | null;
+    source: "owner" | "default" | "max";
+    current: number;
+    oomKills: number;
+    at: number;
   } | null;
   liveError: string | null;
 }

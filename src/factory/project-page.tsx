@@ -693,16 +693,18 @@ export function memBytes(q: string | null | undefined): number {
   return Number(m[1]) * (m[2] === "Gi" ? GI : 2 ** 20);
 }
 
-/** Sidecar choices: every whole Gi from 2Gi to the max. */
+/** Containers' memory choices: every whole Gi from 1Gi to the max. */
 export function sidecarChoices(max: string | null): string[] {
   const top = Math.floor(memBytes(max) / GI);
   if (!Number.isFinite(top)) return [];
-  return Array.from({ length: Math.max(0, top - 1) }, (_, i) => `${i + 2}Gi`);
+  return Array.from({ length: Math.max(0, top) }, (_, i) => `${i + 1}Gi`);
 }
+
+const gib = (bytes: number) => `${(bytes / GI).toFixed(1)} Gio`;
 
 const CONTAINER_CHOICES = ["1Gi", "2Gi", "3Gi", "4Gi", "6Gi", "8Gi"];
 
-/** Docker resources of the agent pod: sidecar memory (live resize) and per-container limit. */
+/** Docker resources of the agent pod: all containers' memory (capped live by the sidecar) and per-container limit. */
 function DockerSection({ project }: { project: FactoryProject }) {
   const t = useFactoryT();
   const { data, error, isLoading } = useProjectDocker(project.id);
@@ -734,7 +736,7 @@ function DockerSection({ project }: { project: FactoryProject }) {
       <div className="flex flex-col gap-4">
         {!data.resizable && (
           <Notice tone="info" testId="docker-not-resizable">
-            {t("memNotResizable", { id: project.id })}
+            {t("memNotResizable")}
           </Notice>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -742,7 +744,10 @@ function DockerSection({ project }: { project: FactoryProject }) {
             label={t("sidecarMemory")}
             hint={
               data.max
-                ? t("memMaxHint", { max: data.max, id: project.id })
+                ? t("memMaxHint", {
+                    max: data.max,
+                    pod: data.podLimit ?? "—",
+                  })
                 : undefined
             }
           >
@@ -789,28 +794,18 @@ function DockerSection({ project }: { project: FactoryProject }) {
         </div>
         {live && (
           <div
-            className="flex flex-wrap items-center gap-2 text-sm"
+            className="flex flex-wrap items-center gap-2 text-sm text-muted"
             data-testid="docker-live"
           >
-            <span className="text-muted">
-              {t("memApplied", { value: live.applied ?? "—" })}
+            <span>
+              {t("memApplied", { value: live.limit ?? t("memNone") })}
             </span>
-            {live.resize ? (
-              <Pill
-                tone={live.resize.status === "pending" ? "warning" : "info"}
-                title={live.resize.message}
-              >
-                {live.resize.status === "pending"
-                  ? t("memResizePending")
-                  : t("memResizing")}
+            <span>·</span>
+            <span>{t("memUsed", { value: gib(live.current) })}</span>
+            {live.oomKills > 0 && (
+              <Pill tone="warning" title={t("memOomHint")}>
+                {t("memOomKills", { n: live.oomKills })}
               </Pill>
-            ) : (
-              live.spec !== live.applied && (
-                <Pill tone="info">{t("memResizing")}</Pill>
-              )
-            )}
-            {live.resize?.message && (
-              <span className="text-muted">{live.resize.message}</span>
             )}
           </div>
         )}

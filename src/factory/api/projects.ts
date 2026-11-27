@@ -99,7 +99,7 @@ export function useSetControl() {
   });
 }
 
-/** Docker resources of the project's agent pod; polled while a resize is under way. */
+/** Docker resources of the project's agent pod (usage refreshed every 15 s). */
 export function useProjectDocker(projectId: string, enabled = true) {
   return useQuery({
     queryKey: factoryKeys.docker(projectId),
@@ -107,12 +107,7 @@ export function useProjectDocker(projectId: string, enabled = true) {
       factoryFetch<ProjectDocker>(`/projects/${enc(projectId)}/docker`),
     enabled,
     retry: false,
-    refetchInterval: (q) => {
-      const d = q.state.data;
-      const settling =
-        !!d?.live?.resize || (!!d?.live && d.live.spec !== d.live.applied);
-      return settling ? 5_000 : 60_000;
-    },
+    refetchInterval: 15_000,
     meta: QUIET,
   });
 }
