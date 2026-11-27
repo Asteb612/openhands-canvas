@@ -1,7 +1,7 @@
 /** Workflow status on top of a factory ticket conversation. */
 import React from "react";
 import { Link } from "react-router";
-import { ChevronDown, Eye, Network, Pencil } from "lucide-react";
+import { ChevronDown, Eye, Network, Pencil, X } from "lucide-react";
 import { cn } from "#/utils/utils";
 import { useSelectConversationTab } from "#/hooks/use-select-conversation-tab";
 import { useOptionalConversationId } from "#/hooks/use-conversation-id";
@@ -78,16 +78,75 @@ export function SpeckitPhases({ progress }: { progress: SpeckitProgress }) {
   );
 }
 
+/** The closed banner: one thin line (ticket, state, Decide), to give the chat its room back. */
+function FactoryBannerClosed({
+  ticket,
+  onDecide,
+  onOpen,
+}: {
+  ticket: FactoryTicket;
+  onDecide: () => void;
+  onOpen: () => void;
+}) {
+  const t = useFactoryT();
+  return (
+    <div
+      className="mx-2 mb-1 flex items-center gap-2 text-xs"
+      data-testid="factory-banner-closed"
+    >
+      <button
+        type="button"
+        className={cn(
+          textActionClassName,
+          "inline-flex min-w-0 items-center gap-1.5 rounded-full border bg-base-secondary px-2 py-0.5",
+          ticket.review ? "border-warning" : "border-border",
+        )}
+        onClick={onOpen}
+        title={t("bannerOpen")}
+        aria-label={t("bannerOpen")}
+        data-testid="factory-banner-open"
+      >
+        <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+        <span className="shrink-0 font-medium text-content">
+          {ticket.issue === null ? ticket.title : `#${ticket.issue}`}
+        </span>
+        <span className="min-w-0 truncate">
+          {ticket.review
+            ? t("decisionWaiting", { what: ticket.review.what })
+            : ticket.stateLabel}
+        </span>
+      </button>
+      {ticket.review && (
+        <button
+          type="button"
+          className={cn(textActionClassName, "shrink-0 text-primary")}
+          onClick={onDecide}
+          data-testid="factory-banner-closed-decide"
+        >
+          {t("decide")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function FactoryBannerView({
   ticket,
   project,
   onDecide,
   phase,
+  closed = false,
+  onClose,
+  onOpen,
 }: {
   ticket: FactoryTicket;
   project?: string;
   onDecide: () => void;
   phase?: SpeckitProgress | null;
+  /** Closed by the owner: only a thin line remains (see FactoryBannerClosed). */
+  closed?: boolean;
+  onClose?: () => void;
+  onOpen?: () => void;
 }) {
   const t = useFactoryT();
   const [showGraph, setShowGraph] = React.useState(false);
@@ -95,6 +154,26 @@ export function FactoryBannerView({
   const [expanded, setExpanded] = React.useState(false);
   const details = expanded ? "flex" : "hidden md:flex";
   const editLink = workflowEditorLink(ticket);
+  if (closed && onOpen)
+    return (
+      <FactoryBannerClosed
+        ticket={ticket}
+        onDecide={onDecide}
+        onOpen={onOpen}
+      />
+    );
+  const closeButton = onClose && (
+    <button
+      type="button"
+      className={cn(textActionClassName, "shrink-0")}
+      onClick={onClose}
+      title={t("bannerClose")}
+      aria-label={t("bannerClose")}
+      data-testid="factory-banner-close"
+    >
+      <X className="size-4" aria-hidden />
+    </button>
+  );
   return (
     <div
       className={cn(
@@ -176,6 +255,7 @@ export function FactoryBannerView({
             aria-hidden
           />
         </button>
+        <span className="md:hidden">{closeButton}</span>
         <span className="ml-auto hidden items-center gap-3 md:flex">
           {ticket.workflow && project && (
             <button
@@ -204,6 +284,7 @@ export function FactoryBannerView({
               {t("editWorkflow")}
             </Link>
           )}
+          {closeButton}
         </span>
       </div>
       {expanded && (
@@ -304,16 +385,43 @@ export function FactoryConversationBanner() {
   const { data: phase } = useSpeckitProgress();
   const { selectTab, selectedTab, isRightPanelShown } =
     useSelectConversationTab();
+  // Closed until the run moves to another step or state: a new decision shows the card again.
+  const at = ticket ? `${ticket.state}:${ticket.node ?? ""}` : "";
+  const key = `factory.banner.closed.${conversationId ?? ""}`;
+  const [closedAt, setClosedAt] = React.useState<string | null>(() =>
+    readClosed(key),
+  );
+  React.useEffect(() => setClosedAt(readClosed(key)), [key]);
+  const setClosed = (value: string | null) => {
+    setClosedAt(value);
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch {
+      // Private mode: closed for this page only.
+    }
+  };
   if (!ticket) return null;
   return (
     <FactoryBannerView
       ticket={ticket}
       project={run?.project}
       phase={phase}
+      closed={closedAt === at}
+      onClose={() => setClosed(at)}
+      onOpen={() => setClosed(null)}
       onDecide={() => {
         if (!(selectedTab === "ticket" && isRightPanelShown))
           selectTab("ticket");
       }}
     />
   );
+}
+
+function readClosed(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }

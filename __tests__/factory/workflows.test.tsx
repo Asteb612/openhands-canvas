@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -939,5 +940,48 @@ describe("factory conversation UI", () => {
     ).not.toHaveClass("hidden");
     await userEvent.click(screen.getByTestId("factory-banner-decide-compact"));
     expect(onDecide).toHaveBeenCalledTimes(2);
+  });
+
+  it("banner can be closed to a thin line and reopened", async () => {
+    const { FactoryBannerView } = await import("#/factory/conversation-banner");
+    const onDecide = vi.fn();
+    const ticket = {
+      version: 1,
+      issue: 792,
+      title: "Activité",
+      state: "HUMAN",
+      stateLabel: "Test manuel",
+      steps: [{ key: "manual_test", label: "Test manuel", status: "review" }],
+      workflow: { id: "speckit-full", version: 2, name: "SpecKit complet" },
+      node: "manual_test",
+      review: { what: "le test manuel", files: [] },
+      updatedAt: "2026-11-27T10:00:00Z",
+    } as const;
+    function Host() {
+      const [closed, setClosed] = React.useState(false);
+      return (
+        <FactoryBannerView
+          ticket={ticket as never}
+          onDecide={onDecide}
+          closed={closed}
+          onClose={() => setClosed(true)}
+          onOpen={() => setClosed(false)}
+        />
+      );
+    }
+    render(
+      <MemoryRouter>
+        <Host />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getAllByTestId("factory-banner-close")[0]);
+    expect(screen.queryByTestId("factory-banner")).not.toBeInTheDocument();
+    expect(screen.getByTestId("factory-banner-closed")).toHaveTextContent(
+      "#792",
+    );
+    await userEvent.click(screen.getByTestId("factory-banner-closed-decide"));
+    expect(onDecide).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByTestId("factory-banner-open"));
+    expect(screen.getByTestId("factory-banner")).toBeInTheDocument();
   });
 });

@@ -356,6 +356,8 @@ const BASE = {
   speckitTodo: ["à faire", "to do"],
   bannerMore: ["Afficher les détails", "Show details"],
   bannerLess: ["Masquer les détails", "Hide details"],
+  bannerClose: ["Fermer la carte", "Close the card"],
+  bannerOpen: ["Rouvrir la carte du ticket", "Reopen the ticket card"],
   editWorkflow: ["Modifier le workflow", "Edit the workflow"],
   draft: ["(brouillon)", "(draft)"],
   graphUnavailable: [
