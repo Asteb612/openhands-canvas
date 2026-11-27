@@ -653,6 +653,25 @@ describe("project page", () => {
               edges: [],
             },
           });
+        if (url.endsWith("/factory-api/projects/autoriz/docker")) {
+          const body = init.body ? JSON.parse(String(init.body)) : {};
+          const view = {
+            enabled: true,
+            resizable: true,
+            default: "10Gi",
+            max: "12Gi",
+            sidecarMemory: body.sidecarMemory ?? null,
+            containerMemory: null,
+            containerMemoryDefault: "2Gi",
+            live: {
+              spec: body.sidecarMemory ?? "10Gi",
+              applied: "10Gi",
+              resize: null,
+            },
+            liveError: null,
+          };
+          return json(method === "PUT" ? { ok: true, docker: view } : view);
+        }
         if (url.endsWith("/factory-api/status"))
           return json({
             control: { paused: false, by: null, at: null, reason: "" },
@@ -743,6 +762,41 @@ describe("project page", () => {
     expect(within(section).getByTestId("factory-docker")).toHaveTextContent(
       "Docker available in the agent pod",
     );
+  });
+
+  it("resizes the Docker sidecar within the project's max", async () => {
+    (globalThis as { __projects?: FactoryProject[] }).__projects = [
+      project({ docker: true }),
+    ];
+    await renderProject();
+    const select = await screen.findByTestId("docker-sidecar-memory");
+    const options = within(select)
+      .getAllByRole("option")
+      .map((o) => o.textContent);
+    expect(options[0]).toBe("Default (10Gi)");
+    expect(options.slice(1)).toEqual(
+      Array.from({ length: 11 }, (_, i) => `${i + 2}Gi`),
+    );
+    expect(screen.getByTestId("docker-live")).toHaveTextContent(
+      "Applied: 10Gi",
+    );
+    await userEvent.selectOptions(select, "12Gi");
+    await waitFor(() =>
+      expect(
+        calls.find(
+          (c) =>
+            c.method === "PUT" && c.url.endsWith("/projects/autoriz/docker"),
+        )?.body,
+      ).toEqual({ sidecarMemory: "12Gi" }),
+    );
+    // Spec 12Gi, applied 10Gi: the kubelet is still resizing.
+    expect(await screen.findByText("Resizing")).toBeInTheDocument();
+  });
+
+  it("hides the Docker resources without Docker", async () => {
+    await renderProject();
+    await screen.findByTestId("project-columns");
+    expect(screen.queryByTestId("project-docker")).not.toBeInTheDocument();
   });
 
   it("edits the board columns and saves them with the notification settings", async () => {

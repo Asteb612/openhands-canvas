@@ -24,6 +24,8 @@ import {
   useFactoryStatus,
   useSaveProjectSettings,
   useSetProjectPause,
+  useProjectDocker,
+  useSetProjectDocker,
   useSetProjectWorkflows,
   useWorkflows,
   type BoardColumn,
@@ -682,6 +684,151 @@ function ConfigSection({ project }: { project: FactoryProject }) {
   );
 }
 
+const GI = 2 ** 30;
+
+/** "10Gi" / "1536Mi" in bytes (the orchestrator sends Mi/Gi quantities). */
+export function memBytes(q: string | null | undefined): number {
+  const m = /^(\d+)(Mi|Gi)$/.exec(q ?? "");
+  if (!m) return Number.NaN;
+  return Number(m[1]) * (m[2] === "Gi" ? GI : 2 ** 20);
+}
+
+/** Sidecar choices: every whole Gi from 2Gi to the max. */
+export function sidecarChoices(max: string | null): string[] {
+  const top = Math.floor(memBytes(max) / GI);
+  if (!Number.isFinite(top)) return [];
+  return Array.from({ length: Math.max(0, top - 1) }, (_, i) => `${i + 2}Gi`);
+}
+
+const CONTAINER_CHOICES = ["1Gi", "2Gi", "3Gi", "4Gi", "6Gi", "8Gi"];
+
+/** Docker resources of the agent pod: sidecar memory (live resize) and per-container limit. */
+function DockerSection({ project }: { project: FactoryProject }) {
+  const t = useFactoryT();
+  const { data, error, isLoading } = useProjectDocker(project.id);
+  const set = useSetProjectDocker();
+  const change = (v: {
+    sidecarMemory?: string | null;
+    containerMemory?: string | null;
+  }) =>
+    set.mutate(
+      { projectId: project.id, ...v },
+      {
+        onSuccess: () => displaySuccessToast(t("dockerSaved")),
+        onError: reportFactoryError,
+      },
+    );
+  let body: React.ReactNode;
+  if (isLoading) body = <StateMessage kind="loading" />;
+  else if (error || !data)
+    body = (
+      <StateMessage kind="error">
+        {(error as Error | null)?.message}
+      </StateMessage>
+    );
+  else {
+    const live = data.live;
+    const sidecar = data.sidecarMemory ?? "";
+    const container = data.containerMemory ?? "";
+    body = (
+      <div className="flex flex-col gap-4">
+        {!data.resizable && (
+          <Notice tone="info" testId="docker-not-resizable">
+            {t("memNotResizable", { id: project.id })}
+          </Notice>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label={t("sidecarMemory")}
+            hint={
+              data.max
+                ? t("memMaxHint", { max: data.max, id: project.id })
+                : undefined
+            }
+          >
+            <select
+              className={selectClassName}
+              value={sidecar}
+              disabled={!data.resizable || set.isPending}
+              onChange={(e) =>
+                change({ sidecarMemory: e.target.value || null })
+              }
+              data-testid="docker-sidecar-memory"
+            >
+              <option value="">
+                {t("memDefault", { value: data.default ?? "—" })}
+              </option>
+              {sidecarChoices(data.max).map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t("containerMemory")}>
+            <select
+              className={selectClassName}
+              value={container}
+              disabled={set.isPending}
+              onChange={(e) =>
+                change({ containerMemory: e.target.value || null })
+              }
+              data-testid="docker-container-memory"
+            >
+              <option value="">
+                {t("memDefault", { value: data.containerMemoryDefault })}
+              </option>
+              {CONTAINER_CHOICES.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+              <option value="0">{t("memNone")}</option>
+            </select>
+          </Field>
+        </div>
+        {live && (
+          <div
+            className="flex flex-wrap items-center gap-2 text-sm"
+            data-testid="docker-live"
+          >
+            <span className="text-muted">
+              {t("memApplied", { value: live.applied ?? "—" })}
+            </span>
+            {live.resize ? (
+              <Pill
+                tone={live.resize.status === "pending" ? "warning" : "info"}
+                title={live.resize.message}
+              >
+                {live.resize.status === "pending"
+                  ? t("memResizePending")
+                  : t("memResizing")}
+              </Pill>
+            ) : (
+              live.spec !== live.applied && (
+                <Pill tone="info">{t("memResizing")}</Pill>
+              )
+            )}
+            {live.resize?.message && (
+              <span className="text-muted">{live.resize.message}</span>
+            )}
+          </div>
+        )}
+        {data.liveError && <Notice tone="warning">{data.liveError}</Notice>}
+      </div>
+    );
+  }
+  return (
+    <Section
+      title={t("dockerSection")}
+      description={t("dockerHint")}
+      testId="project-docker"
+    >
+      {body}
+    </Section>
+  );
+}
+
 const KIND_ORDER: CommandKind[] = ["setup", "check", "run", "other"];
 const KIND_LABEL = {
   setup: "cmdKindSetup",
@@ -813,6 +960,7 @@ export default function FactoryProjectPage() {
             <ColumnsSection key={project.id} project={project} />
             <NotificationsSection project={project} />
             <CommandsSection project={project} />
+            {project.docker && <DockerSection project={project} />}
             <ConfigSection project={project} />
           </>
         )}

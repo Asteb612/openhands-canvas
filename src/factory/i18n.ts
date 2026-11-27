@@ -433,6 +433,27 @@ const BASE = {
   notifyfailed: ["Échec", "Failure"],
   notifyquota: ["Quota atteint", "Quota reached"],
   notifycompleted: ["Terminé", "Completed"],
+  dockerSection: ["Ressources Docker", "Docker resources"],
+  dockerHint: [
+    "Mémoire du démon Docker du pod agent : appliquée à chaud, sans redémarrage ni interruption des runs. La limite par conteneur s'applique aux conteneurs créés ensuite (relance la stack pour l'appliquer).",
+    "Memory of the agent pod's Docker daemon: applied live, no restart, runs keep going. The per-container limit applies to containers created afterwards (restart the stack to apply it).",
+  ],
+  sidecarMemory: ["Mémoire du sidecar Docker", "Docker sidecar memory"],
+  containerMemory: ["Limite par conteneur", "Per-container limit"],
+  memDefault: ["Par défaut ({value})", "Default ({value})"],
+  memNone: ["Aucune limite", "No limit"],
+  memMaxHint: [
+    "Au plus {max} (deploy.docker.memMax dans projects/{id}.yaml).",
+    "At most {max} (deploy.docker.memMax in projects/{id}.yaml).",
+  ],
+  memApplied: ["Appliqué : {value}", "Applied: {value}"],
+  memResizing: ["Redimensionnement en cours", "Resizing"],
+  memResizePending: ["Redimensionnement en attente", "Resize pending"],
+  memNotResizable: [
+    "Redimensionnement indisponible : orchestrateur hors cluster, ou deploy.docker.memLimit et memMax absents de projects/{id}.yaml.",
+    "Resize unavailable: orchestrator outside a cluster, or deploy.docker.memLimit and memMax missing from projects/{id}.yaml.",
+  ],
+  dockerSaved: ["Ressources Docker enregistrées", "Docker resources saved"],
   configSection: ["Configuration versionnée", "Versioned configuration"],
   configHint: [
     "Lecture seule : projects/{id}.yaml dans le dépôt infra (PR pour la modifier).",

@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { factoryFetch, factoryKeys, QUIET } from "./client";
-import type { FactoryProject, FactoryStatus, ProjectSettings } from "./types";
+import type {
+  FactoryProject,
+  FactoryStatus,
+  ProjectDocker,
+  ProjectSettings,
+} from "./types";
 
 const enc = encodeURIComponent;
 
@@ -90,6 +95,46 @@ export function useSetControl() {
         body: v,
       }),
     onSuccess: invalidate,
+    meta: QUIET,
+  });
+}
+
+/** Docker resources of the project's agent pod; polled while a resize is under way. */
+export function useProjectDocker(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: factoryKeys.docker(projectId),
+    queryFn: () =>
+      factoryFetch<ProjectDocker>(`/projects/${enc(projectId)}/docker`),
+    enabled,
+    retry: false,
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      const settling =
+        !!d?.live?.resize || (!!d?.live && d.live.spec !== d.live.applied);
+      return settling ? 5_000 : 60_000;
+    },
+    meta: QUIET,
+  });
+}
+
+/** Sidecar memory (applied live) and default container limit; null = back to default. */
+export function useSetProjectDocker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      projectId: string;
+      sidecarMemory?: string | null;
+      containerMemory?: string | null;
+    }) => {
+      const { projectId, ...body } = v;
+      return factoryFetch<{ ok: true; docker: ProjectDocker }>(
+        `/projects/${enc(projectId)}/docker`,
+        { method: "PUT", body },
+      );
+    },
+    onSuccess: (r, v) => {
+      qc.setQueryData(factoryKeys.docker(v.projectId), r.docker);
+    },
     meta: QUIET,
   });
 }

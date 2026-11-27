@@ -143,6 +143,31 @@ export interface ProjectSettings {
   notify: { events: NotifyKind[]; topicEnv?: string };
   paused?: ProjectPause | null;
   columns?: BoardColumn[];
+  /** Set through PUT /projects/:id/docker (kept by the settings endpoint). */
+  docker?: { sidecarMemory?: string; containerMemory?: string };
+}
+
+/** Docker resources of a project's agent pod (GET /projects/:id/docker). */
+export interface ProjectDocker {
+  enabled: boolean;
+  /** The sidecar can be resized live (in a cluster, memMax set in the project file). */
+  resizable: boolean;
+  /** Terraform default (deploy.docker.memLimit) and the most Canvas may set (memMax). */
+  default: string | null;
+  max: string | null;
+  sidecarMemory: string | null;
+  containerMemory: string | null;
+  containerMemoryDefault: string;
+  live: {
+    spec: string | null;
+    applied: string | null;
+    resize: {
+      status: "pending" | "in_progress";
+      reason?: string;
+      message?: string;
+    } | null;
+  } | null;
+  liveError: string | null;
 }
 
 export interface FactoryProject {

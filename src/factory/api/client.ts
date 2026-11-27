@@ -99,6 +99,7 @@ export const factoryKeys = {
   stats: (project: string, id: string | null) =>
     ["factory", "stats", project, id] as const,
   projects: () => ["factory", "projects"] as const,
+  docker: (project: string) => ["factory", "docker", project] as const,
   runs: (project?: string) => ["factory", "runs", project ?? ""] as const,
   runFamily: () => ["factory", "runs"] as const,
   status: () => ["factory", "status"] as const,
