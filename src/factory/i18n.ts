@@ -349,7 +349,7 @@ const BASE = {
   demoHideNotes: ["Masquer les notes", "Hide notes"],
   decisionDemo: ["Voir la démo", "See the demo"],
   decisionPreview: ["Tester dans l'aperçu", "Test in the preview"],
-  previewStacks: ["Stack de quel ticket ?", "Which ticket's stack?"],
+  previewStacks: ["Toutes les stacks", "All stacks"],
   speckitTasks: ["Tâches Spec Kit", "Spec Kit tasks"],
   speckitProgress: ["{done}/{total} faites", "{done}/{total} done"],
   speckitDone: ["faite", "done"],
