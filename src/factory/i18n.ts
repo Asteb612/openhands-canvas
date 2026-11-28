@@ -270,8 +270,8 @@ const BASE = {
   resumedToast: ["Factory relancée", "Factory resumed"],
   quotaOk: ["{label} : quota OK", "{label}: quota OK"],
   quotaHit: [
-    "{label} : quota atteint, reprise vers {time} ({projects})",
-    "{label}: quota reached, resumes around {time} ({projects})",
+    "{label} : quota atteint, l'agent reprend vers {time} ({projects}) ; tes décisions sont prises en compte",
+    "{label}: quota reached, the agent resumes around {time} ({projects}); your decisions still go through",
   ],
   pushOn: ["Push ntfy actif", "ntfy push on"],
   pushOff: ["Push non configuré", "Push not configured"],
